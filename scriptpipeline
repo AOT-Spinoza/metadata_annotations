@@ -1,0 +1,12 @@
+from src.load_models import load_model
+from src.predictions import inference
+import hydra_zen
+config = hydra_zen.load_from_yaml("/tank/tgn252/metadata_annotations/config.yaml")
+@hydra_zen.pipeline
+def my_pipeline(config):
+    # Load the models.
+    models, transformations = load_model(config)
+    inputs = config.inputs.get('path')
+    outputs = inference(config, models, transformations, inputs)
+    # postprocessed = post(outputs, config)
+    # store_data = store_data(postprocessed, config)

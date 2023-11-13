@@ -1,0 +1,10 @@
+models:
+  keypoints:
+    weights: KeypointRCNN_ResNet50_FPN_Weights.DEFAULT
+    model_loading_function: keypointrcnn_resnet50_fpn
+
+  semantic_segmentation:
+    weights: FCN_ResNet101_Weights.DEFAULT
+    model_loading_function: fcn_resnet101
+inputs:
+  path: /tank/tgn252/vid_folder
