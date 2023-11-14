@@ -1,10 +1,27 @@
 models:
   keypoints:
-    weights: KeypointRCNN_ResNet50_FPN_Weights.DEFAULT
-    model_loading_function: keypointrcnn_resnet50_fpn
-
+    load_model:
+      _target_: src.load_models.load_model
+      model_loading_function: torchvision.models.detection.keypointrcnn_resnet50_fpn
+      weights: torchvision.models.detection.KeypointRCNN_ResNet50_FPN_Weights
+      weight_version: DEFAULT
+    inference:
+      framework: torch
+      unsqueeze: false
+      to_tensor: false
+    postprocessing:
+      tracker: true
   semantic_segmentation:
-    weights: FCN_ResNet101_Weights.DEFAULT
-    model_loading_function: fcn_resnet101
+    load_model:
+      _target_: src.load_models.load_model
+      model_loading_function: torchvision.models.segmentation.fcn_resnet101
+      weights: torchvision.models.segmentation.FCN_ResNet101_Weights
+      weight_version: DEFAULT
+    inference:
+      framework: torch
+      unsqueeze: true
+      to_tensor: true
+    postprocessing:
+      tracker: true
 inputs:
   path: /tank/tgn252/vid_folder

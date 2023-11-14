@@ -1,10 +1,24 @@
-from scripts import keypoints
+from scripts import torch_inference
+import os
 
-def inference(config, models, transformations, inputs):
+def inference(config, models, transformations, input_dir):
+    """
+    Runs inference on the given video files using the specified models and transformations.
+
+    Args:
+        config (dict): Configuration dictionary.
+        models (dict): Dictionary containing the models to use for inference.
+        transformations (dict): Dictionary containing the transformations to apply to each model's inputs.
+        input_dir (str): Path to the directory containing the video files.
+
+    Returns:
+        dict: Dictionary containing the output of each model's inference for each video file.
+    """
+    # Get a list of all video files in the input directory
+    video_files = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.endswith('.mp4')]  # adjust the condition based on your video file format
+
     output_dict = {}
-    for model in models:
-        for model_name, predictor in model.items():
-            if model_name == 'keypoints':
-                output_dict['keypoints'] = keypoints.inference(inputs, predictor, transformations['keypoints'], config)
-            if model_name == 'semantic_segmentation':
-                output_dict['semantic_segmentation'] = []
+    for model_name, predictor in models.items():
+        if config.model_name.get("framework") == 'torch':
+            output_dict[model_name] = torch_inference.infer_videos(video_files, predictor, transformations[model_name], config)
+    return output_dict
