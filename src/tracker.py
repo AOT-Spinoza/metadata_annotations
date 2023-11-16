@@ -1,6 +1,6 @@
 from lib.sort import Sort
 
-def track_keypoints(predictions):
+def track_boxes(predictions):
     """
     Tracks keypoints in a video using the SORT algorithm.
 

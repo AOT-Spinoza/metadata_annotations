@@ -17,11 +17,12 @@ def custom_read_video(video_object, start=0, end=None, read_video=True, read_aud
         video_object.set_current_stream("video")
         frames = []
         for frame in itertools.takewhile(lambda x: x['pts'] <= end, video_object.seek(start)):
-            frames.append(frame['data'])
+            # Add the color channel dimension to the frame
+            frame_with_channel = frame['data']
+            frames.append(frame_with_channel)
             video_pts.append(frame['pts'])
         if len(frames) > 0:
             video_frames = torch.stack(frames, 0)
-
     audio_frames = torch.empty(0)
     audio_pts = []
     if read_audio:

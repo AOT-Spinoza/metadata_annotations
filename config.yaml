@@ -1,27 +1,38 @@
-models:
-  keypoints:
-    load_model:
-      _target_: src.load_models.load_model
-      model_loading_function: torchvision.models.detection.keypointrcnn_resnet50_fpn
-      weights: torchvision.models.detection.KeypointRCNN_ResNet50_FPN_Weights
-      weight_version: DEFAULT
-    inference:
-      framework: torch
-      unsqueeze: false
-      to_tensor: false
-    postprocessing:
-      tracker: true
+tasks:
   semantic_segmentation:
-    load_model:
-      _target_: src.load_models.load_model
-      model_loading_function: torchvision.models.segmentation.fcn_resnet101
-      weights: torchvision.models.segmentation.FCN_ResNet101_Weights
-      weight_version: DEFAULT
-    inference:
-      framework: torch
-      unsqueeze: true
-      to_tensor: true
-    postprocessing:
-      tracker: true
-inputs:
-  path: /tank/tgn252/vid_folder
+    FCN_ResNet101:
+        load_model:
+          _target_: src.load_models_zen.load_model
+          model_loading_function: torchvision.models.segmentation.fcn_resnet101
+          weights: torchvision.models.segmentation.FCN_ResNet101_Weights
+          weight_version: DEFAULT
+        inference:
+          _target_: src.predictions_zen.inference
+          framework: torch
+        preprocessing:
+          unsqueeze: yes
+          to_tensor: false
+          to_list: false
+        postprocessing:
+          - src.postprocessing.soft_max
+          
+  keypoints:
+    KeypointRCNN_ResNet50:
+      load_model:
+        _target_: src.load_models_zen.load_model
+        model_loading_function: torchvision.models.detection.keypointrcnn_resnet50_fpn
+        weights: torchvision.models.detection.KeypointRCNN_ResNet50_FPN_Weights
+        weight_version: DEFAULT
+      inference:
+        _target_: src.predictions_zen.inference
+        framework: torch
+      preprocessing:
+        unsqueeze: false
+        to_tensor: false
+        to_list : yes
+      postprocessing:
+        - src.postprocessing.tracking
+        - src.postprocessing.threshold
+        - threshold_value : 0,75
+
+inputs: /tank/tgn252/test_vid

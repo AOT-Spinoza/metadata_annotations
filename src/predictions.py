@@ -18,7 +18,10 @@ def inference(config, models, transformations, input_dir):
     video_files = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.endswith('.mp4')]  # adjust the condition based on your video file format
 
     output_dict = {}
-    for model_name, predictor in models.items():
-        if config.model_name.get("framework") == 'torch':
-            output_dict[model_name] = torch_inference.infer_videos(video_files, predictor, transformations[model_name], config)
+    for task_type, task_models in models.items():
+        output_dict[task_type] = {}
+        for model_name, model in task_models.items():
+            framework = config.tasks[task_type][model_name].inference.framework
+            if framework == 'torch':
+                output_dict[task_type][model_name] = torch_inference.infer_videos(video_files, model, transformations[task_type][model_name], config, task_type, model_name)
     return output_dict
