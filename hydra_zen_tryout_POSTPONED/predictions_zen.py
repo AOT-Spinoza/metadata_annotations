@@ -1,6 +1,6 @@
-from scripts import torch_inference_zen
-import os
+from . import torch_inference_zen
 from omegaconf import DictConfig
+import os
 
 def inference(models: dict, transformations: dict, input_dir: str, config: DictConfig):
     """

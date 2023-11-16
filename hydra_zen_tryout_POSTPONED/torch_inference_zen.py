@@ -13,7 +13,7 @@ import torchvision.io
 import sys
 
 
-def infer_videos(model, transformation, video_files, model_config):
+def infer_videos(model, transformation, video_files, model_config, model_name):
     """
     Runs inference on the given video files using the specified model and transformation.
 

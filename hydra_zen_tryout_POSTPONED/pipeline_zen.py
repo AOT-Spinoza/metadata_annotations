@@ -1,7 +1,7 @@
 from omegaconf import OmegaConf
 from hydra_zen import to_yaml, builds, instantiate
-from src.load_models_zen import load_model
-from src.predictions_zen import inference
+from .load_models_zen import load_model
+from .predictions_zen import inference
 import os
 # Load the configuration file
 config = OmegaConf.load('config_zen.yaml')
