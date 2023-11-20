@@ -3,6 +3,40 @@ import torch
 import torchvision.io
 
 def custom_read_video(video_object, start=0, end=None, read_video=True, read_audio=False):
+    """
+    Reads a video file and returns the video frames, audio frames, video and audio pts, and metadata.
+
+    Args:
+        video_object (object): A video object.
+        start (float): The start time in seconds. Default is 0.
+        end (float): The end time in seconds. Default is None.
+        read_video (bool): Whether to read video frames. Default is True.
+        read_audio (bool): Whether to read audio frames. Default is False.
+
+    Returns:
+        tuple: A tuple containing:
+            - video_frames (torch.Tensor): A tensor containing the video frames in the format (T, C, H, W).
+            - audio_frames (torch.Tensor): A tensor containing the audio frames.
+            - video_pts (list): A list of video pts.
+            - audio_pts (list): A list of audio pts.
+            - metadata (dict): A dictionary containing the metadata.
+
+    The function reads a video file and returns the video frames, audio frames, video and audio pts, and metadata.
+    The video frames and audio frames are returned as tensors, while the video and audio pts are returned as lists.
+    The metadata is returned as a dictionary.
+
+    Example usage:
+    ```
+    video_object = torchvision.io.VideoReader("video.mp4")
+    video_frames, audio_frames, video_pts, audio_pts, metadata = custom_read_video(video_object)
+    ```
+
+    The video_frames tensor has the following dimensions:
+    - T: number of frames in the video
+    - C: number of channels in the video (3 for RGB)
+    - H: height of each frame in pixels
+    - W: width of each frame in pixels
+    """
     if end is None:
         end = float("inf")
     if end < start:

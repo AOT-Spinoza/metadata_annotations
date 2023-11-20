@@ -15,6 +15,10 @@ tasks:
           to_list: false
         postprocessing:
           - src.postprocessing.soft_max
+        export:
+          video: no
+          csv: yes
+
           
   keypoints:
     KeypointRCNN_ResNet50:
@@ -33,6 +37,7 @@ tasks:
       postprocessing:
         - src.postprocessing.tracking
         - src.postprocessing.threshold
-        - threshold_value : 0,75
-
+        - threshold_value : 0,75  
 inputs: /tank/tgn252/test_vid
+outputs: /tank/tgn252/metadata_annotations/result
+```
