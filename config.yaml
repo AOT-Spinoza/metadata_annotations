@@ -1,43 +1,64 @@
 tasks:
-  semantic_segmentation:
-    FCN_ResNet101:
+  # semantic_segmentation:
+  #   FCN_ResNet101:
+  #       load_model:
+  #         _target_: src.load_models_zen.load_model
+  #         model_loading_function: torchvision.models.segmentation.fcn_resnet101
+  #         weights: torchvision.models.segmentation.FCN_ResNet101_Weights
+  #         weight_version: DEFAULT
+  #       inference:
+  #         _target_: src.predictions_zen.inference
+  #         framework: torch
+  #       preprocessing:
+  #         unsqueeze: yes
+  #         to_tensor: false
+  #         to_list: false
+  #       postprocessing:
+  #         - src.postprocessing.soft_max
+  #       export:
+  #         video: yes
+  #         csv: no
+  # keypoints:
+  #   KeypointRCNN_ResNet50:
+  #       load_model:
+  #         _target_: src.load_models_zen.load_model
+  #         model_loading_function: torchvision.models.detection.keypointrcnn_resnet50_fpn
+  #         weights: torchvision.models.detection.KeypointRCNN_ResNet50_FPN_Weights
+  #         weight_version: DEFAULT
+  #       inference:
+  #         _target_: src.predictions_zen.inference
+  #         framework: torch
+  #       preprocessing:
+  #         unsqueeze: false
+  #         to_tensor: false
+  #         to_list : yes
+  #       postprocessing:
+  #         - src.postprocessing.threshold
+  #         - src.tracker.tracking
+  #       threshold_value : 0.75  
+  #       export:
+  #         video: no
+  #         csv: yes
+  instance_segmentation:
+    MaskRCNN_ResNet50_FPN:
         load_model:
           _target_: src.load_models_zen.load_model
-          model_loading_function: torchvision.models.segmentation.fcn_resnet101
-          weights: torchvision.models.segmentation.FCN_ResNet101_Weights
+          model_loading_function: torchvision.models.detection.maskrcnn_resnet50_fpn
+          weights: torchvision.models.detection.MaskRCNN_ResNet50_FPN_Weights
           weight_version: DEFAULT
         inference:
           _target_: src.predictions_zen.inference
           framework: torch
         preprocessing:
-          unsqueeze: yes
+          unsqueeze: false
           to_tensor: false
-          to_list: false
+          to_list : yes
         postprocessing:
-          - src.postprocessing.soft_max
+          - src.postprocessing.threshold
+          - src.tracker.tracking
+        threshold_value : 0.75  
         export:
-          video: no
+          video: yes
           csv: yes
-
-          
-  keypoints:
-    KeypointRCNN_ResNet50:
-      load_model:
-        _target_: src.load_models_zen.load_model
-        model_loading_function: torchvision.models.detection.keypointrcnn_resnet50_fpn
-        weights: torchvision.models.detection.KeypointRCNN_ResNet50_FPN_Weights
-        weight_version: DEFAULT
-      inference:
-        _target_: src.predictions_zen.inference
-        framework: torch
-      preprocessing:
-        unsqueeze: false
-        to_tensor: false
-        to_list : yes
-      postprocessing:
-        - src.postprocessing.tracking
-        - src.postprocessing.threshold
-        - threshold_value : 0,75  
 inputs: /tank/tgn252/test_vid
 outputs: /tank/tgn252/metadata_annotations/result
-```

@@ -17,14 +17,13 @@ def threshold(predictions, threshold_value=0.75):
     """
     filtered_predictions = []
     for prediction in predictions:
-        prediction = prediction[0]
         scores = prediction['scores']
         idx = torch.where(scores > float(threshold_value))
 
         # Filter all keys in the prediction using idx
         filtered_prediction = {key: value[idx] for key, value in prediction.items() if isinstance(value, torch.Tensor)}
-
         filtered_predictions.append(filtered_prediction)
+
     return filtered_predictions
 
 def soft_max(predictions, config):

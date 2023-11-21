@@ -12,20 +12,23 @@ def tracking(predictions, config):
     """
     # Initialize SORT tracker
     tracker = Sort()
-
+    
     tracked_predictions = []
-    a=1
+    
     for prediction in predictions:
-
+    
         bboxes_scores = np.column_stack((prediction['boxes'], prediction['scores']))
-        keypoints = prediction['keypoints']
+        keypoints = prediction.get('keypoints', None)  # Get keypoints if they exist
+        masks = prediction.get('masks', None)  # Get masks if they exist
         tracked_bboxes = tracker.update(bboxes_scores)
         tracked_prediction = prediction.copy()
         tracked_prediction['boxes'] = tracked_bboxes[:, :4]
         tracked_prediction['scores'] = prediction['scores'] 
         tracked_prediction['ids'] = tracked_bboxes[:, 4].astype(int)
-        tracked_prediction['keypoints'] = keypoints  # assuming keypoints are in the same order as boxes DOUBLE CHECK THIS
+        if keypoints is not None:
+            tracked_prediction['keypoints'] = keypoints  # assuming keypoints are in the same order as boxes
+        if masks is not None:
+            tracked_prediction['masks'] = masks  # assuming masks are in the same order as boxes
         tracked_predictions.append(tracked_prediction)
-            
-
+    
     return tracked_predictions

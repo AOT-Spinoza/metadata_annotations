@@ -25,6 +25,7 @@ def infer_videos(video_files, model, transformation, config, task_type, model_na
         for frame_count, frame in enumerate(tqdm(video_frames, desc=f"Processing frames for {os.path.basename(video)}", leave=False), start=1):
             # Apply preprocessing steps if they are specified in the config
             if config.tasks[task_type][model_name].preprocessing.unsqueeze:
+                #for semantic segmentation
                 frame = frame.unsqueeze(0)
             if config.tasks[task_type][model_name].preprocessing.to_tensor:
                 frame = torch.from_numpy(frame)
@@ -37,6 +38,7 @@ def infer_videos(video_files, model, transformation, config, task_type, model_na
 
             # Move the transformed frame to the device
             transformed_frame = transformed_frame.to(device)
+
             # Perform inference
             if config.tasks[task_type][model_name].preprocessing.to_list:
                 transformed_frame = [transformed_frame]
@@ -50,7 +52,9 @@ def infer_videos(video_files, model, transformation, config, task_type, model_na
             else:
                 output = [{k: v.detach().cpu() for k, v in dict_.items()} for dict_ in output]
             # Store the output in the output list.
-            outputs_all[os.path.basename(video)].append(output)
+            print(output)
+            print('here')
+            outputs_all[os.path.basename(video)].extend(output)
     del model
     torch.cuda.empty_cache()
     return outputs_all

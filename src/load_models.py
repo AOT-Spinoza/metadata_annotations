@@ -19,6 +19,7 @@ def load_model_non_hydra(config):
             weights_module, weights_class_name = model_config.load_model.weights.rsplit('.', 1)
             weights_class = getattr(importlib.import_module(weights_module), weights_class_name)
             weights = getattr(weights_class, model_config.load_model.weight_version)
+            classes  = weights.meta['categories']
             # Load the model
             model = model_loading_function(weights=weights)
 
@@ -28,4 +29,4 @@ def load_model_non_hydra(config):
 
             models[task_type][model_name] = model
 
-    return models, transformations
+    return models, transformations, classes
