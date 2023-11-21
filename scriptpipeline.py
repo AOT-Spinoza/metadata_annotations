@@ -2,8 +2,6 @@ from src.load_models import load_model_non_hydra
 from src.predictions import inference
 from src.postprocessing import postprocess_predictions
 from scripts.save_data import determine_and_execute_export_function
-from scripts.visualizer import visualize_segmentation
-from scripts.visualizer import create_videos_from_frames
 import hydra_zen
 import numpy as np
 

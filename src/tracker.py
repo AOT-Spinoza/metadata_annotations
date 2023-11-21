@@ -1,44 +1,31 @@
 from lib.sort import Sort
-
-def track_boxes(predictions):
+import numpy as np
+def tracking(predictions, config):
     """
-    Tracks keypoints in a video using the SORT algorithm.
+    Applies the SORT algorithm to track instances across frames.
 
     Args:
-        predictions (list): A list of dictionaries, where each dictionary represents a prediction
-            for a single frame in the video. Each dictionary should have the following keys:
-            - 'boxes': A list of bounding boxes for the keypoints in the frame.
-            - 'scores': A list of confidence scores for each bounding box.
+        predictions (list of dicts): A list of dictionaries containing the predictions made by the model.
 
     Returns:
-        list: A list of dictionaries, where each dictionary represents a prediction for a single
-        frame in the video. Each dictionary should have the following keys:
-        - 'boxes': A list of bounding boxes for the keypoints in the frame.
-        - 'scores': A list of confidence scores for each bounding box.
-        - 'id': A unique ID assigned to each tracked object by the SORT algorithm.
+        list of dicts: A list of dictionaries containing the tracked instances.
     """
-    
-    # Initialize tracker
+    # Initialize SORT tracker
     tracker = Sort()
 
     tracked_predictions = []
-
-    # For each prediction...
+    a=1
     for prediction in predictions:
-        # Get bounding boxes and scores
-        bboxes = prediction['boxes'].tolist()
-        scores = prediction['scores'].tolist()
 
-        # Format for SORT: [x1, y1, x2, y2, score]
-        bboxes_scores = [bbox + [score] for bbox, score in zip(bboxes, scores)]
-
-        # Update tracker
+        bboxes_scores = np.column_stack((prediction['boxes'], prediction['scores']))
+        keypoints = prediction['keypoints']
         tracked_bboxes = tracker.update(bboxes_scores)
-
-        # Assign tracked IDs to predictions
-        for i, bbox in enumerate(tracked_bboxes):
-            tracked_prediction = prediction.copy()  # Create a new dictionary
-            tracked_prediction['id'] = int(bbox[4])  # The unique ID assigned by SORT
-            tracked_predictions.append(tracked_prediction)
+        tracked_prediction = prediction.copy()
+        tracked_prediction['boxes'] = tracked_bboxes[:, :4]
+        tracked_prediction['scores'] = prediction['scores'] 
+        tracked_prediction['ids'] = tracked_bboxes[:, 4].astype(int)
+        tracked_prediction['keypoints'] = keypoints  # assuming keypoints are in the same order as boxes DOUBLE CHECK THIS
+        tracked_predictions.append(tracked_prediction)
+            
 
     return tracked_predictions

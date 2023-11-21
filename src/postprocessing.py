@@ -1,10 +1,10 @@
 import yaml
 import importlib
-from src.tracker import track_boxes
+from src.tracker import tracking
 import torch
+import numpy as np
 
-
-def threshold(prediction, threshold_value=0.75):
+def threshold(predictions, threshold_value=0.75):
     """
     Applies a threshold to the predictions of the Keypoint R-CNN model.
 
@@ -15,29 +15,38 @@ def threshold(prediction, threshold_value=0.75):
     Returns:
         dict: A dictionary containing the filtered predictions.
     """
-    scores = prediction['scores']
-    idx = torch.where(scores > threshold_value)
-    filtered_prediction = prediction[idx]
-    return filtered_prediction
+    filtered_predictions = []
+    for prediction in predictions:
+        prediction = prediction[0]
+        scores = prediction['scores']
+        idx = torch.where(scores > float(threshold_value))
+        # Filter the scores, boxes, and labels using idx
+        filtered_prediction = {
+            'scores': prediction['scores'][idx],
+            'boxes': prediction['boxes'][idx],
+            'labels': prediction['labels'][idx],
+            'keypoints': prediction['keypoints'][idx] if 'keypoints' in prediction else None,
+            'ids': prediction['ids'][idx] if 'ids' in prediction else None}
+        filtered_predictions.append(filtered_prediction)
+        
+    # Include any other keys as necessary
+        
+    return filtered_predictions
 
-def soft_max(prediction):
+def soft_max(predictions, config):
     """
     Applies the softmax function to the predictions of the semantic segmentation model.
 
     Args:
-        prediction (Tensor): A tensor containing the predictions made by the model.
+        predictions (list of Tensors): A list of tensors containing the predictions made by the model.
 
     Returns:
-        Tensor: A tensor containing the predictions with applied softmax function.
+        list of Tensors: A list of tensors containing the predictions with applied softmax function.
     """
-    return torch.nn.functional.softmax(prediction, dim=0)
+    print('soft_max')
+    return [torch.nn.functional.softmax(prediction.squeeze(), dim=0) for prediction in predictions]
 
 
-def tracking(predictions, config):
-    ## track the predictions through frames, instances getting unique ids, with the use of the sort function
-    ## TO BE IMPLEMENTED
-
-    return predictions
 
 
 
@@ -54,21 +63,30 @@ def postprocess_predictions(predictions, config):
     """
     postprocessed = {}
     for task_type, task_results in predictions.items():
+        print(task_type)
         postprocessed[task_type] = {}
         for model_name, videos in task_results.items():
+            print(model_name)
             postprocessing_func_names = config['tasks'][task_type][model_name]['postprocessing']
             postprocessed[task_type][model_name] = {}
             for video_name, prediction in videos.items():
+                postprocessed[task_type][model_name][video_name] = prediction
                 for postprocessing_func in postprocessing_func_names:
                     # Dynamically import the post-processing function
-                    module_name, function_name = postprocessing_func['function'].rsplit('.', 1)
+                    module_name, function_name = postprocessing_func.rsplit('.', 1)
                     module = importlib.import_module(module_name)
                     postprocessing_function = getattr(module, function_name)
+                    
                     # Apply the post-processing function
                     if function_name == 'threshold':
-                        threshold_value = postprocessing_func.get('threshold_value', 0.75)  # Use a default value if not specified
-                        postprocessed_prediction = postprocessing_function(prediction, threshold_value)
+                        print('threshold')
+                        threshold_value = config['tasks'][task_type][model_name].get('threshold_value', 0.75)  # Use a default value if not specified
+                        postprocessed[task_type][model_name][video_name] = postprocessing_function(postprocessed[task_type][model_name][video_name], threshold_value)
                     else:
-                        postprocessed_prediction = postprocessing_function(prediction)
-                postprocessed[task_type][model_name][video_name] = postprocessed_prediction
+                        # print(f"Before {function_name}, shape: {postprocessed[task_type][model_name][video_name][0].shape}")
+                        print('postprocessing')
+                        print(model_name)
+                        postprocessed[task_type][model_name][video_name] = postprocessing_function(postprocessed[task_type][model_name][video_name], config)
+                        #  print(f"After {function_name}, shape: {postprocessed[task_type][model_name][video_name][0].shape}")
+                        print('done')
     return postprocessed
