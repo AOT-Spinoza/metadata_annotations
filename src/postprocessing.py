@@ -20,17 +20,11 @@ def threshold(predictions, threshold_value=0.75):
         prediction = prediction[0]
         scores = prediction['scores']
         idx = torch.where(scores > float(threshold_value))
-        # Filter the scores, boxes, and labels using idx
-        filtered_prediction = {
-            'scores': prediction['scores'][idx],
-            'boxes': prediction['boxes'][idx],
-            'labels': prediction['labels'][idx],
-            'keypoints': prediction['keypoints'][idx] if 'keypoints' in prediction else None,
-            'ids': prediction['ids'][idx] if 'ids' in prediction else None}
+
+        # Filter all keys in the prediction using idx
+        filtered_prediction = {key: value[idx] for key, value in prediction.items() if isinstance(value, torch.Tensor)}
+
         filtered_predictions.append(filtered_prediction)
-        
-    # Include any other keys as necessary
-        
     return filtered_predictions
 
 def soft_max(predictions, config):
@@ -63,7 +57,6 @@ def postprocess_predictions(predictions, config):
     """
     postprocessed = {}
     for task_type, task_results in predictions.items():
-        print(task_type)
         postprocessed[task_type] = {}
         for model_name, videos in task_results.items():
             print(model_name)
@@ -79,7 +72,6 @@ def postprocess_predictions(predictions, config):
                     
                     # Apply the post-processing function
                     if function_name == 'threshold':
-                        print('threshold')
                         threshold_value = config['tasks'][task_type][model_name].get('threshold_value', 0.75)  # Use a default value if not specified
                         postprocessed[task_type][model_name][video_name] = postprocessing_function(postprocessed[task_type][model_name][video_name], threshold_value)
                     else:
