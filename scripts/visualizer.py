@@ -18,6 +18,50 @@ import torchvision.transforms.functional as F
 
 plt.rcParams["savefig.bbox"] = 'tight'
 
+def get_video_data(video_name, config, resize_value=None):
+    """
+    Retrieves video frames and frames per second (fps) from a given video file.
+
+    Args:
+        video_name (str): The name of the video file.
+        config (dict): Configuration settings.
+        resize_value (tuple, optional): The desired size to resize the frames. Defaults to None.
+
+    Returns:
+        tuple: A tuple containing the resized frames and the frames per second (fps).
+    """
+    video = find_video_path(video_name, config)
+    video_reader = torchvision.io.VideoReader(video, "video")
+    video_frames, _, pts, meta = custom_read_video(video_reader)
+    fps = meta['video']['fps'][0]
+    del video_reader
+    gc.collect()
+    if resize_value is not None:
+        resized_frames = [resize(frame, size=resize_value) for frame in video_frames]
+    else:
+        resized_frames = video_frames
+    return resized_frames, fps
+
+def write_video(out_video_name, frames, fps):
+    """
+    Write a video file from a list of frames. The frames are expected to be in the format [T, C, H, W].
+    Will be permuted into [T, H, W, C] for the video writer that is expected.
+
+    ## TO DO need to think if permuting must be into config if other frame formats are used for upcoming models.
+    
+
+    Args:
+        out_video_name (str): The name of the output video file.
+        frames (list): A list of frames to be written to the video file.
+        fps (int): The frames per second of the output video.
+
+    Returns:
+        None
+    """
+    frames_tensor = torch.stack(frames)
+    frames_tensor = frames_tensor.permute(0, 2, 3, 1)
+    torchvision.io.write_video(out_video_name, frames_tensor, fps)
+
 
 def export_frame(imgs, filename):
     """
@@ -40,57 +84,8 @@ def export_frame(imgs, filename):
         axs[0, i].set(xticklabels=[], yticklabels=[], xticks=[], yticks=[])
     plt.savefig(filename)
 
-def visualize_segmentation(predictions, config):
-    """
-    Visualizes the segmentation predictions for different task types, models, and videos.
 
-    Args:
-        predictions (dict): A dictionary containing the segmentation predictions.
-            The keys are task types, and the values are dictionaries containing
-            the model names and their corresponding video predictions.
-        config (dict): A dictionary containing the configuration settings.
-
-    Returns:
-        dict: A dictionary named video_masked containing the structure task_type{model{video{[masked_frames,metadata]}}}.
-
-    """
-    video_masked = {}
-    # Iterate over different task types and their results
-    for task_type, task_results in predictions.items():
-        video_masked[task_type] = {}
-        # Iterate over different models and their results
-        for model_name, videos in task_results.items():
-            video_masked[task_type][model_name] = {}
-            # Iterate over different videos and their predictions
-            for video_name, prediction in videos.items():
-                video_masked[task_type][model_name][video_name] = []
-                # Find the video path using the video name and config
-                video = find_video_path(video_name, config)
-                # Create a VideoReader for the video
-                video_reader = torchvision.io.VideoReader(video, "video")
-                # Read the video frames, audio, pts, and metadata
-                video_frames, _, pts, meta = custom_read_video(video_reader)
-                # Delete the VideoReader to free up memory
-                del video_reader
-                # Collect any garbage left from deleting the VideoReader
-                gc.collect()
-                # Resize each frame to a height of 520 while maintaining the aspect ratio
-                resized_frames = [resize(frame, size=520) for frame in video_frames]
-                # The dimension along which the classes are represented
-                class_dim = 1
-                # Stack the list of predictions into a single tensor
-                prediction = torch.stack(prediction)
-                # Get the number of classes from the shape of the prediction tensor
-                num_classes = prediction.shape[class_dim]
-                # Create a binary mask for each class
-                all_classes_masks = (prediction.argmax(class_dim) == torch.arange(num_classes)[:, None, None, None])
-                # The shape of all_classes_masks is (C, T, H, W) so we need to swap first two axes
-                all_classes_masks = all_classes_masks.swapaxes(0, 1)
-                masked_frames = [draw_segmentation_masks(frame, masks=mask, alpha=0.5) for frame, mask in zip(resized_frames, all_classes_masks)]
-                video_masked[task_type][model_name][video_name] = [masked_frames, meta]
-    return video_masked
-
-def visualize_segmentation2(predictions, video_name, config):
+def create_semantic_masks(predictions, video_name, config, resize_value=None):
     """
     Visualizes the segmentation predictions for a single video.
 
@@ -103,17 +98,7 @@ def visualize_segmentation2(predictions, video_name, config):
         list: A list containing the masked frames and metadata for the video.
     """
     # Find the video path using the video name and config
-    video = find_video_path(video_name, config)
-    # Create a VideoReader for the video
-    video_reader = torchvision.io.VideoReader(video, "video")
-    # Read the video frames, audio, pts, and metadata
-    video_frames, _, pts, meta = custom_read_video(video_reader)
-    # Delete the VideoReader to free up memory
-    del video_reader
-    # Collect any garbage left from deleting the VideoReader
-    gc.collect()
-    # Resize each frame to a height of 520 while maintaining the aspect ratio
-    resized_frames = [resize(frame, size=520) for frame in video_frames]
+    frames, fps = get_video_data(video_name, config, resize_value)                        
     # The dimension along which the classes are represented
     class_dim = 1
     # Stack the list of predictions into a single tensor
@@ -124,12 +109,12 @@ def visualize_segmentation2(predictions, video_name, config):
     all_classes_masks = (prediction.argmax(class_dim) == torch.arange(num_classes)[:, None, None, None])
     # The shape of all_classes_masks is (C, T, H, W) so we need to swap first two axes
     all_classes_masks = all_classes_masks.swapaxes(0, 1)
-    masked_frames = [draw_segmentation_masks(frame, masks=mask, alpha=0.5) for frame, mask in zip(resized_frames, all_classes_masks)]
-    return masked_frames, meta
+    masked_frames = [draw_segmentation_masks(frame, masks=mask, alpha=0.5) for frame, mask in zip(frames, all_classes_masks)]
+    return masked_frames, fps
 
 
 
-def create_videos_from_frames(data, out_video_name, task_type,video_name, config):
+def create_videos_from_frames(data, out_video_name, task_type,video_name, config, resize_value=None):
     """
     Create a video file from a list of frames.
 
@@ -142,37 +127,30 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
         None
     """
     # Create a VideoWriter object   
-    # Convert the list of frames to a 4D tensor
+
+    if task_type == 'instance_segmentation':
+        resized_frames, fps = get_video_data(video_name, config, resize_value)
+        score_threshold = .75
+        prob_threshold = .5
+        boolean_masks = [
+            (out['masks'][out['scores'] > score_threshold] > prob_threshold) for out in data]
+        frames_with_masks = [
+            draw_segmentation_masks(img, mask.squeeze(1))
+            for img, mask in zip(resized_frames, boolean_masks)
+        ]
+        write_video(out_video_name, frames_with_masks, fps)
 
     if task_type == 'semantic_segmentation':
-        video_masked, meta = visualize_segmentation2(data,video_name, config)	
-        frames_tensor = torch.stack(video_masked)
-        print(frames_tensor.shape)
-        # Writes a 4d tensor in [T, H, W, C] for the video writer
-        frames_tensor = frames_tensor.permute(0, 2, 3, 1)
-        print(frames_tensor.shape) 
-        # Write the frames to a video file
-        fps = meta['video']['fps'][0]
-        torchvision.io.write_video(out_video_name, frames_tensor, fps)
+        video_masked, fps = create_semantic_masks(data,video_name, config)	
+        write_video(out_video_name, video_masked, fps, permute = (0, 2, 3, 1))
     if task_type == 'keypoints':
         # Create a dictionary to store the colors for each unique ID
         id_to_color = {}
-        video = find_video_path(video_name, config)
-        # Create a VideoReader for the video
-        video_reader = torchvision.io.VideoReader(video, "video")
-        # Read the video frames, audio, pts, and metadata
-        video_frames, _, pts, meta = custom_read_video(video_reader)
-        fps = meta['video']['fps'][0]
-        print('here')
-        # Delete the VideoReader to free up memory
-        del video_reader
-        # Collect any garbage left from deleting the VideoReader
-        gc.collect()
+        video_frames, fps = get_video_data(video_name, config, resize_value)
         overdrawn_frames = []
         for frame, prediction in zip(video_frames, data):
             keypoints = prediction['keypoints']
             ids = prediction['ids']
-            print(ids)
             for i, id in enumerate(ids):
                 # Convert keypoints to the expected format [num_instances, K, 2]
                 # Check if the unique ID is in the dictionary
@@ -190,8 +168,4 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
             
             overdrawn_frames.append(frame)
 
-        ## TO DO PERMUTE THE OUTPUT OF EVERY IMAGE BY DRAW_KEYPOINTS AND ADD THEM TO A LIST AND THEN STACK THEM TO MAKE 4D TENSOR [T, H, W, C]
-        frames_tensor_keypoints = torch.stack(overdrawn_frames)
-        frames_tensor_keypoints = frames_tensor_keypoints.permute(0, 2, 3, 1)
-        print(frames_tensor_keypoints.shape)
-        torchvision.io.write_video(out_video_name, frames_tensor_keypoints, fps)
+        write_video(out_video_name, overdrawn_frames, fps)

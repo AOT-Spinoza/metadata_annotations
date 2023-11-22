@@ -29,7 +29,7 @@ def infer_videos(video_files, model, transformation, config, task_type, model_na
                 frame = frame.unsqueeze(0)
             if config.tasks[task_type][model_name].preprocessing.to_tensor:
                 frame = torch.from_numpy(frame)
-            if frame_count == 10:
+            if frame_count == 30:
                 break
             
             # Apply the transformation to the video frame.
@@ -52,8 +52,6 @@ def infer_videos(video_files, model, transformation, config, task_type, model_na
             else:
                 output = [{k: v.detach().cpu() for k, v in dict_.items()} for dict_ in output]
             # Store the output in the output list.
-            print(output)
-            print('here')
             outputs_all[os.path.basename(video)].extend(output)
     del model
     torch.cuda.empty_cache()

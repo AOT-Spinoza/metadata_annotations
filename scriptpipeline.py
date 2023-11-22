@@ -12,15 +12,10 @@ def my_pipeline(config):
     models, transformations, classes = load_model_non_hydra(config)
     inputs = config["inputs"]
     outputs = inference(config, models, transformations, inputs)
-    # output = outputs['instance_segmentation']["MaskRCNN_ResNet50_FPN"]['paard_persooon.mp4'][0]
-    # print([classes[label] for label in output['labels']])
-
     postprocessed = postprocess_predictions(outputs, config)
-    # output = postprocessed['instance_segmentation']["MaskRCNN_ResNet50_FPN"]['paard_persooon.mp4'][0]
-    # print([classes[label] for label in output['labels']])
-
     determine_and_execute_export_function(postprocessed, config)
 
 
 
 my_pipeline(config)
+

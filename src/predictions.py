@@ -24,5 +24,5 @@ def inference(config, models, transformations, input_dir):
             framework = config.tasks[task_type][model_name].inference.framework
             if framework == 'torch':
                 output_dict[task_type][model_name] = torch_inference.infer_videos(video_files, model, transformations[task_type][model_name], config, task_type, model_name)
-                print(output_dict.keys())
+
     return output_dict
