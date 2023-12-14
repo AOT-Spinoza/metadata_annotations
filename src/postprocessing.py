@@ -58,7 +58,9 @@ def postprocess_predictions(predictions, config):
     for task_type, task_results in predictions.items():
         postprocessed[task_type] = {}
         for model_name, videos in task_results.items():
-            print(model_name)
+            if config['tasks'][task_type][model_name].get('postprocessing', None) == None:
+                postprocessed[task_type][model_name] = videos
+                continue
             postprocessing_func_names = config['tasks'][task_type][model_name]['postprocessing']
             postprocessed[task_type][model_name] = {}
             for video_name, prediction in videos.items():

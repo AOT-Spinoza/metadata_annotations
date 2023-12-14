@@ -1,6 +1,7 @@
 tasks:
   # semantic_segmentation:
   #   FCN_ResNet101:
+  #       framework: torch
   #       load_model:
   #         _target_: src.load_models_zen.load_model
   #         model_loading_function: torchvision.models.segmentation.fcn_resnet101
@@ -21,6 +22,7 @@ tasks:
   #         csv: no
   # keypoints:
   #   KeypointRCNN_ResNet50:
+  #       framework: torch
   #       load_model:
   #         _target_: src.load_models_zen.load_model
   #         model_loading_function: torchvision.models.detection.keypointrcnn_resnet50_fpn
@@ -42,6 +44,7 @@ tasks:
   #         csv: yes
   # instance_segmentation:
   #   MaskRCNN_ResNet50_FPN:
+  #       framework: torch
   #       load_model:
   #         _target_: src.load_models_zen.load_model
   #         model_loading_function: torchvision.models.detection.maskrcnn_resnet50_fpn
@@ -62,8 +65,21 @@ tasks:
   #         video: yes
   #         csv: no
   #         resize: 720
-  
+   action_classification:
+      X3D:
+        framework: torchhub
+        load_model:
+          model_loading_function: 'torch.hub.load'
+          model_repo: 'facebookresearch/pytorchvideo'
+          model_variant: 'x3d_s'
+          pretrained: yes
+          classes: kinetics400
+        export:
+          csv: yes
 
 
-inputs: /tank/tgn252/test_vid
+
+inputs: /tank/tgn252/vid_folder
 outputs: /tank/tgn252/metadata_annotations/result
+class_paths:
+  kinetics400: /tank/tgn252/metadata_annotations/library/kinetics_classnames.json

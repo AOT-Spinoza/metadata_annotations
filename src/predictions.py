@@ -1,7 +1,8 @@
 from scripts import torch_inference
+from scripts import torchhub_inference
 import os
 
-def inference(config, models, transformations, input_dir):
+def inference(config, models, transformations, clip_durations, classes, input_dir):
     """
     Runs inference on the given video files using the specified models and transformations.
 
@@ -21,8 +22,9 @@ def inference(config, models, transformations, input_dir):
     for task_type, task_models in models.items():
         output_dict[task_type] = {}
         for model_name, model in task_models.items():
-            framework = config.tasks[task_type][model_name].inference.framework
+            framework = config.tasks[task_type][model_name].framework
             if framework == 'torch':
                 output_dict[task_type][model_name] = torch_inference.infer_videos(video_files, model, transformations[task_type][model_name], config, task_type, model_name)
-
+            if framework == 'torchhub':
+                output_dict[task_type][model_name] = torchhub_inference.infer_videos_torchhub(video_files, model, transformations[task_type][model_name], clip_durations[task_type][model_name], classes[task_type][model_name], model_name)
     return output_dict
