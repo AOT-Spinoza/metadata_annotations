@@ -65,7 +65,7 @@ def keypoints_to_csv(data, output_filename):
         
 
 
-def determine_and_execute_export_function(data_dict, config):
+def determine_and_execute_export_function(data_dict,classes, config):
     """
     Determines and executes the appropriate exporting function for each model in the data_dict.
     Args:
@@ -74,6 +74,7 @@ def determine_and_execute_export_function(data_dict, config):
     """
     for task_type, task_data in data_dict.items():
         for model_name, model_data in task_data.items():
+            classes = classes[task_type][model_name]
             if config['tasks'][task_type][model_name]['framework'] == "torchhub":
                 print('intorchexport')
                 if config['tasks'][task_type][model_name]['export'].get('csv', None):
@@ -89,7 +90,9 @@ def determine_and_execute_export_function(data_dict, config):
                                 writer.writerow(data)
 
             if config['tasks'][task_type][model_name]['framework'] == "torch":
+                
                 for video_name, data in model_data.items():
+                    video_name = video_name.split('.')[0]
                     # Create a directory for the model if it doesn't exist
                     output_path = config['outputs']
                     task_dir = os.path.join(output_path, video_name, task_type, model_name)
@@ -98,8 +101,8 @@ def determine_and_execute_export_function(data_dict, config):
                     # Get the export settings for the current task and model
                     export_settings = config['tasks'][task_type][model_name]['export']
                     print(export_settings)
-                    if export_settings.get('resize', None):
-                        resize_value = export_settings['resize']
+                    
+                    resize_value =  export_settings.get('resize', None)
                     if task_type == 'semantic_segmentation':
                         if export_settings.get('csv', False):
                             # Save the segmentation to a CSV file 
@@ -107,7 +110,7 @@ def determine_and_execute_export_function(data_dict, config):
                         # Check if video export is requested
                         if export_settings.get('video', False):
                             # Save the segmentation as a video
-                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value)
+                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
                             print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
                     if task_type == 'keypoints':
 
@@ -117,14 +120,23 @@ def determine_and_execute_export_function(data_dict, config):
                         if export_settings.get('video', False):
                             # Save the segmentation as a video
                             print('Creating video')
-                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value)
+                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
                             print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
                     if task_type == "instance_segmentation":
                         # Check if video export is requested
                         if export_settings.get('video', False):
                             # Save the segmentation as a video
-                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value)
+                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
                             print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
                         if export_settings.get('csv', False):
                             # Save the segmentation to a CSV file 
                             save_segmentation_as_hdf5(data, os.path.join(task_dir, f"{video_name}_{model_name}.hdf5")) 
+                    if task_type == "object_detection":
+                        # Check if video export is requested
+                        if export_settings.get('video', False):
+                            # Save the segmentation as a video
+                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
+                            print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
+                        if export_settings.get('csv', False):
+                            ## TODO: Save the object boxes to a CSV file:
+                            print('done')

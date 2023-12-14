@@ -114,7 +114,7 @@ def create_semantic_masks(predictions, video_name, config, resize_value=None):
 
 
 
-def create_videos_from_frames(data, out_video_name, task_type,video_name, config, resize_value=None):
+def create_videos_from_frames(data, out_video_name, task_type,video_name, config, resize_value, classes):
     """
     Create a video file from a list of frames.
 
@@ -167,5 +167,18 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
                 frame = torchvision.utils.draw_keypoints(frame, keypoints_xy, colors=color)
             
             overdrawn_frames.append(frame)
+        write_video(out_video_name, overdrawn_frames, fps)
+    if task_type == 'object_detection':
+        video_frames, fps = get_video_data(video_name, config, resize_value)
+        overdrawn_frames = []
+        for frame, prediction in zip(video_frames, data):
+            # Get the bounding boxes and labels from the prediction
+            boxes = prediction['boxes']
 
+            print(prediction['labels'])
+            labels = [classes[i] for i in prediction['labels']]  # Fixed the syntax error here
+            # Draw the bounding boxes on the frame
+            frame = torchvision.utils.draw_bounding_boxes(frame, boxes, labels, font="/tank/tgn252/metadata_annotations/library/GothamMedium.ttf", font_size=20, width=4)
+            print('yesss')
+            overdrawn_frames.append(frame)
         write_video(out_video_name, overdrawn_frames, fps)

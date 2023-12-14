@@ -1,9 +1,27 @@
 tasks:
+  # object_detection:
+  #   fasterrcnn_resnet50_fpn_v2:
+  #       framework: torch
+  #       load_model:
+  #         model_loading_function: torchvision.models.detection.fasterrcnn_resnet50_fpn_v2
+  #         weights: torchvision.models.detection.FasterRCNN_ResNet50_FPN_V2_Weights
+  #         weight_version: DEFAULT
+  #       preprocessing:
+  #         unsqueeze: false
+  #         to_tensor: false
+  #         to_list: yes
+  #       postprocessing:
+  #         - src.postprocessing.threshold
+  #         - src.tracker.tracking
+  #       threshold_value : 0.75  
+  #       export:
+  #         video: yes
+  #         csv: no
+
   # semantic_segmentation:
   #   FCN_ResNet101:
   #       framework: torch
   #       load_model:
-  #         _target_: src.load_models_zen.load_model
   #         model_loading_function: torchvision.models.segmentation.fcn_resnet101
   #         weights: torchvision.models.segmentation.FCN_ResNet101_Weights
   #         weight_version: DEFAULT
@@ -42,6 +60,7 @@ tasks:
   #       export:
   #         video: no
   #         csv: yes
+
   # instance_segmentation:
   #   MaskRCNN_ResNet50_FPN:
   #       framework: torch
@@ -65,21 +84,22 @@ tasks:
   #         video: yes
   #         csv: no
   #         resize: 720
-   action_classification:
-      X3D:
-        framework: torchhub
-        load_model:
-          model_loading_function: 'torch.hub.load'
-          model_repo: 'facebookresearch/pytorchvideo'
-          model_variant: 'x3d_s'
-          pretrained: yes
-          classes: kinetics400
-        export:
-          csv: yes
+  #  action_classification:
+  #     X3D:
+  #       framework: torchhub
+  #       load_model:
+  #         model_loading_function: 'torch.hub.load'
+  #         model_repo: 'facebookresearch/pytorchvideo'
+  #         model_variant: 'x3d_s'
+  #         pretrained: yes
+  #         classes: kinetics400
+  #       export:
+  #         csv: yes
+    
 
 
 
-inputs: /tank/tgn252/vid_folder
+inputs: /tank/tgn252/test_vid
 outputs: /tank/tgn252/metadata_annotations/result
 class_paths:
   kinetics400: /tank/tgn252/metadata_annotations/library/kinetics_classnames.json
