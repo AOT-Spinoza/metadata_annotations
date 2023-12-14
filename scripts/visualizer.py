@@ -1,5 +1,5 @@
 
-from torchvision.transforms.functional import to_pil_image, resize
+from torchvision.transforms.functional import resize
 from torchvision.utils import draw_segmentation_masks
 from PIL import Image
 from scripts.find_video import find_video_path
@@ -30,6 +30,7 @@ def get_video_data(video_name, config, resize_value=None):
     Returns:
         tuple: A tuple containing the resized frames and the frames per second (fps).
     """
+    video_name += ".mp4"
     video = find_video_path(video_name, config)
     video_reader = torchvision.io.VideoReader(video, "video")
     video_frames, _, pts, meta = custom_read_video(video_reader)
@@ -41,6 +42,7 @@ def get_video_data(video_name, config, resize_value=None):
     else:
         resized_frames = video_frames
     return resized_frames, fps
+
 
 def write_video(out_video_name, frames, fps):
     """
@@ -174,11 +176,8 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
         for frame, prediction in zip(video_frames, data):
             # Get the bounding boxes and labels from the prediction
             boxes = prediction['boxes']
-
-            print(prediction['labels'])
             labels = [classes[i] for i in prediction['labels']]  # Fixed the syntax error here
             # Draw the bounding boxes on the frame
             frame = torchvision.utils.draw_bounding_boxes(frame, boxes, labels, font="/tank/tgn252/metadata_annotations/library/GothamMedium.ttf", font_size=20, width=4)
-            print('yesss')
             overdrawn_frames.append(frame)
         write_video(out_video_name, overdrawn_frames, fps)

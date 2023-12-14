@@ -13,7 +13,6 @@ def my_pipeline(config):
     inputs = config["inputs"]
     outputs = inference(config, models, transformations, clip_durations, classes, inputs)
     postprocessed = postprocess_predictions(outputs, config)
-    print('out of postprocessing')
     determine_and_execute_export_function(postprocessed,classes, config)
     print('out of determine_and_execute_export_function')
 

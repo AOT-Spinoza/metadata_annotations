@@ -29,8 +29,7 @@ def infer_videos(video_files, model, transformation, config, task_type, model_na
                 frame = frame.unsqueeze(0)
             if config.tasks[task_type][model_name].preprocessing.to_tensor:
                 frame = torch.from_numpy(frame)
-            if frame_count == 60:
-                break
+
             
             # Apply the transformation to the video frame.
 

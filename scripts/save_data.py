@@ -7,6 +7,28 @@ import numpy as np
 
 import h5py
 
+def save_detection_as_hdf5(data, filename):
+    """
+    Save the object detection output as an HDF5 file.
+    This is done on the data with all probabilities per class on a pixel, 
+    maybe we need to decide to first argmax for the dominant class so we just have per pixel what class it belongs to.
+
+    Args:
+        detections (list): A list of tensors representing the detection maps for each frame.
+        filename (str): The name of the HDF5 file to save.
+    """
+
+    for frame in data:
+        for key, value in frame.items():
+            frame[key] = value.detach().numpy()
+    
+    # Write to HDF5 file
+    with h5py.File(filename, 'w') as f:
+        for i, d in enumerate(data):
+            grp = f.create_group(str(i))
+            for key, value in d.items():
+                grp.create_dataset(key, data=value)
+
 def save_segmentation_as_hdf5(segmentation, filename):
     """
     Save the semantic segmentation output as an HDF5 file.
@@ -76,7 +98,6 @@ def determine_and_execute_export_function(data_dict,classes, config):
         for model_name, model_data in task_data.items():
             classes = classes[task_type][model_name]
             if config['tasks'][task_type][model_name]['framework'] == "torchhub":
-                print('intorchexport')
                 if config['tasks'][task_type][model_name]['export'].get('csv', None):
                     # Save the segmentation to a CSV file 
                     for video_name, data in model_data.items():
@@ -92,10 +113,11 @@ def determine_and_execute_export_function(data_dict,classes, config):
             if config['tasks'][task_type][model_name]['framework'] == "torch":
                 
                 for video_name, data in model_data.items():
-                    video_name = video_name.split('.')[0]
+                    
                     # Create a directory for the model if it doesn't exist
                     output_path = config['outputs']
                     task_dir = os.path.join(output_path, video_name, task_type, model_name)
+                    video_name = video_name.split('.')[0]
                     os.makedirs(task_dir, exist_ok=True)
 
                     # Get the export settings for the current task and model
@@ -128,7 +150,7 @@ def determine_and_execute_export_function(data_dict,classes, config):
                             # Save the segmentation as a video
                             visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
                             print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
-                        if export_settings.get('csv', False):
+                        if export_settings.get('hdf5', False):
                             # Save the segmentation to a CSV file 
                             save_segmentation_as_hdf5(data, os.path.join(task_dir, f"{video_name}_{model_name}.hdf5")) 
                     if task_type == "object_detection":
@@ -137,6 +159,6 @@ def determine_and_execute_export_function(data_dict,classes, config):
                             # Save the segmentation as a video
                             visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
                             print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
-                        if export_settings.get('csv', False):
-                            ## TODO: Save the object boxes to a CSV file:
-                            print('done')
+                        if export_settings.get('hdf5', False):
+                            print('herein')
+                            save_detection_as_hdf5(data, os.path.join(task_dir, f"{video_name}_{model_name}.hdf5")) 

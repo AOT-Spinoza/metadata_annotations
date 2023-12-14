@@ -13,15 +13,8 @@
 # limitations under the License.
 
 
-import json
-import urllib
-from pytorchvideo.data.encoded_video import EncodedVideo
 
-from torchvision.transforms import Compose, Lambda
-from torchvision.transforms._transforms_video import (
-    CenterCropVideo,
-    NormalizeVideo,
-)
+from torchvision.transforms import Compose, Lambda, CenterCrop, Normalize
 from pytorchvideo.transforms import (
     ApplyTransformToKey,
     ShortSideScale,
@@ -64,9 +57,9 @@ def torchhub_transform(torchhub_model_variant, config):
                 [
                     UniformTemporalSubsample(transform_params["num_frames"]),
                     Lambda(lambda x: x/255.0),
-                    NormalizeVideo(mean, std),
+                    Normalize(mean, std),
                     ShortSideScale(size=transform_params["side_size"]),
-                    CenterCropVideo(
+                    CenterCrop(
                         crop_size=(transform_params["crop_size"], transform_params["crop_size"])
                     )
                 ]

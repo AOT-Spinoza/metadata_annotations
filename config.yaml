@@ -1,22 +1,25 @@
 tasks:
-  # object_detection:
-  #   fasterrcnn_resnet50_fpn_v2:
-  #       framework: torch
-  #       load_model:
-  #         model_loading_function: torchvision.models.detection.fasterrcnn_resnet50_fpn_v2
-  #         weights: torchvision.models.detection.FasterRCNN_ResNet50_FPN_V2_Weights
-  #         weight_version: DEFAULT
-  #       preprocessing:
-  #         unsqueeze: false
-  #         to_tensor: false
-  #         to_list: yes
-  #       postprocessing:
-  #         - src.postprocessing.threshold
-  #         - src.tracker.tracking
-  #       threshold_value : 0.75  
-  #       export:
-  #         video: yes
-  #         csv: no
+  action_detection:
+
+  object_detection:
+    fasterrcnn_resnet50_fpn_v2:
+        framework: torch
+        load_model:
+          model_loading_function: torchvision.models.detection.fasterrcnn_resnet50_fpn_v2
+          weights: torchvision.models.detection.FasterRCNN_ResNet50_FPN_V2_Weights
+          weight_version: DEFAULT
+        preprocessing:
+          unsqueeze: false
+          to_tensor: false
+          to_list: yes
+        postprocessing:
+          - src.postprocessing.threshold
+          - src.tracker.tracking
+        threshold_value : 0.75  
+        export:
+          video: yes
+          csv: no
+          hdf5: yes
 
   # semantic_segmentation:
   #   FCN_ResNet101:
@@ -38,6 +41,7 @@ tasks:
   #         video: yes
   #         resize: (520)
   #         csv: no
+  #          hdf5: yes
   # keypoints:
   #   KeypointRCNN_ResNet50:
   #       framework: torch
