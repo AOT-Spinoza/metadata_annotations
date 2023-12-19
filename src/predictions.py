@@ -1,5 +1,6 @@
 from scripts import torch_inference
 from scripts import torchhub_inference
+from scripts import pytorchvideo_inference
 import os
 
 def inference(config, models, transformations, clip_durations, classes, input_dir):
@@ -27,4 +28,6 @@ def inference(config, models, transformations, clip_durations, classes, input_di
                 output_dict[task_type][model_name] = torch_inference.infer_videos(video_files, model, transformations[task_type][model_name], config, task_type, model_name)
             if framework == 'torchhub':
                 output_dict[task_type][model_name] = torchhub_inference.infer_videos_torchhub(video_files, model, transformations[task_type][model_name], clip_durations[task_type][model_name], classes[task_type][model_name], model_name)
+            if framework == 'pytorchvideo':
+                output_dict[task_type][model_name] = pytorchvideo_inference.infer_videos(video_files, model, transformations[task_type][model_name], clip_durations[task_type][model_name], classes[task_type][model_name], model_name)
     return output_dict

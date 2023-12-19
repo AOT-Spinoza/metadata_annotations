@@ -7,11 +7,31 @@ import numpy as np
 
 import h5py
 
+def load_data_from_hdf5(filename):
+    """
+    Load the object detection output from an HDF5 file.
+
+    Args:
+        filename (str): The name of the HDF5 file to load.
+
+    Returns:
+        data (list): A list of dictionaries representing the detection maps for each frame.
+    """
+    data = []
+
+    with h5py.File(filename, 'r') as f:
+        for key in f.keys():
+            frame = {}
+            for subkey in f[key].keys():
+                frame[subkey] = np.array(f[key][subkey])
+            data.append(frame)
+
+    return data
+
 def save_detection_as_hdf5(data, filename):
     """
     Save the object detection output as an HDF5 file.
-    This is done on the data with all probabilities per class on a pixel, 
-    maybe we need to decide to first argmax for the dominant class so we just have per pixel what class it belongs to.
+
 
     Args:
         detections (list): A list of tensors representing the detection maps for each frame.

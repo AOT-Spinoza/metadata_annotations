@@ -1,25 +1,36 @@
-tasks:
-  action_detection:
+tasks:   
+  # object_detection:
+  #   fasterrcnn_resnet50_fpn_v2:
+  #       framework: torch
+  #       load_model:
+  #         model_loading_function: torchvision.models.detection.fasterrcnn_resnet50_fpn_v2
+  #         weights: torchvision.models.detection.FasterRCNN_ResNet50_FPN_V2_Weights
+  #         weight_version: DEFAULT
+  #       preprocessing:
+  #         unsqueeze: false
+  #         to_tensor: false
+  #         to_list: yes
+  #       postprocessing:
+  #         - src.postprocessing.threshold
+  #         - src.tracker.tracking
+  #       threshold_value : 0.75  
+  #       export:
+  #         video: yes
+  #         csv: no
+  #         hdf5: yes
 
-  object_detection:
-    fasterrcnn_resnet50_fpn_v2:
-        framework: torch
-        load_model:
-          model_loading_function: torchvision.models.detection.fasterrcnn_resnet50_fpn_v2
-          weights: torchvision.models.detection.FasterRCNN_ResNet50_FPN_V2_Weights
-          weight_version: DEFAULT
-        preprocessing:
-          unsqueeze: false
-          to_tensor: false
-          to_list: yes
-        postprocessing:
-          - src.postprocessing.threshold
-          - src.tracker.tracking
-        threshold_value : 0.75  
-        export:
-          video: yes
-          csv: no
-          hdf5: yes
+  action_detection:
+    slowfast_r50_detection:
+      framework: pytorchvideo
+      load_model:
+        model_loading_function: 'torch.hub.load'
+        model_repo: 'facebookresearch/pytorchvideo'
+        model_variant: 'slowfast_r50_detection'
+        pretrained: yes
+        classes: ava
+      clip_duration: 0.9
+      
+
 
   # semantic_segmentation:
   #   FCN_ResNet101:
@@ -107,3 +118,4 @@ inputs: /tank/tgn252/test_vid
 outputs: /tank/tgn252/metadata_annotations/result
 class_paths:
   kinetics400: /tank/tgn252/metadata_annotations/library/kinetics_classnames.json
+  ava: /tank/tgn252/metadata_annotations/library/ava_action_list.pbtxt  

@@ -46,5 +46,7 @@ def infer_videos_torchhub(video_files, model, transformation,clip_duration,class
                 "pred_value": pred_values.tolist()
             }
 
-    
+            
+
+    print(outputs_all.keys)
     return outputs_all
