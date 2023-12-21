@@ -1,115 +1,152 @@
 tasks:   
-  # object_detection:
-  #   fasterrcnn_resnet50_fpn_v2:
-  #       framework: torch
-  #       load_model:
-  #         model_loading_function: torchvision.models.detection.fasterrcnn_resnet50_fpn_v2
-  #         weights: torchvision.models.detection.FasterRCNN_ResNet50_FPN_V2_Weights
-  #         weight_version: DEFAULT
-  #       preprocessing:
-  #         unsqueeze: false
-  #         to_tensor: false
-  #         to_list: yes
-  #       postprocessing:
-  #         - src.postprocessing.threshold
-  #         - src.tracker.tracking
-  #       threshold_value : 0.75  
-  #       export:
-  #         video: yes
-  #         csv: no
-  #         hdf5: yes
+  # captioning:
+  #   GIT:
+  #     framework: huggingface
+  #     load_model:
+  #       model_loading_function: 'transformers.AutoModelForSeq2SeqLM.from_pretrained'
+  #       parameters_load_function: 
+  #        pretrained_model_name_or_path : "microsoft/git-base-vatex"
+  #       transformation_function: 'transformation_functions.huggingface_transform'
+  #       parameters_transformation:
+  #         model_name: "microsoft/git-base-vatex"
+  #       pretrained: yes
+
+
+  object_detection:
+    fasterrcnn_resnet50_fpn_v2:
+      load_model:
+        framework: torch
+        model_loading_function: torchvision.models.detection.fasterrcnn_resnet50_fpn_v2
+        parameters_load_function:
+          weights: "FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT"
+        transformation_function: 'src.transformations.torch_transform'
+        parameters_transformation:
+          weights: FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
+        classes_function: 'src.classes_mapping.classes_mapping'
+        parameters_classes:
+          weights: FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
+      preprocessing:
+        unsqueeze: false
+        to_tensor: false
+        to_list: yes
+      postprocessing:
+        - src.postprocessing.threshold
+        - src.tracker.tracking
+      threshold_value : 0.75  
+      export:
+        video: yes
+        csv: no
+        hdf5: yes
+
+  semantic_segmentation:
+    FCN_ResNet101:
+      load_model:
+        framework: torch
+        model_loading_function: torchvision.models.segmentation.fcn_resnet101
+        parameters_load_function:
+          weights: FCN_ResNet101_Weights.DEFAULT
+        transformation_function: 'src.transformations.torch_transform'
+        parameters_transformation:
+          weights: FCN_ResNet101_Weights.DEFAULT
+        classes_function: 'src.classes_mapping.classes_mapping'
+        parameters_classes:
+          weights: FCN_ResNet101_Weights.DEFAULT
+      preprocessing:
+        unsqueeze: yes
+        to_tensor: false
+        to_list: false
+      postprocessing:
+        - src.postprocessing.soft_max
+      export:
+        video: yes
+        resize: (520)
+        csv: no
+        hdf5: yes
+
+  keypoints:
+    KeypointRCNN_ResNet50:
+      load_model:
+        framework: torch
+        model_loading_function: torchvision.models.detection.keypointrcnn_resnet50_fpn
+        parameters_load_function:
+          weights: KeypointRCNN_ResNet50_FPN_Weights.DEFAULT
+        transformation_function: 'src.transformations.torch_transform'
+        parameters_transformation:
+          weights: KeypointRCNN_ResNet50_FPN_Weights.DEFAULT
+        classes_function: 'src.classes_mapping.classes_mapping'
+        parameters_classes:
+          weights: KeypointRCNN_ResNet50_FPN_Weights.DEFAULT
+      preprocessing:
+        unsqueeze: false
+        to_tensor: false
+        to_list : yes
+      postprocessing:
+        - src.postprocessing.threshold
+        - src.tracker.tracking
+      threshold_value : 0.75  
+      export:
+        video: no
+        csv: yes
+
+  instance_segmentation:
+    MaskRCNN_ResNet50_FPN:
+      load_model:
+        framework: torch
+        model_loading_function: torchvision.models.detection.maskrcnn_resnet50_fpn
+        parameters_load_function:
+          weights: MaskRCNN_ResNet50_FPN_Weights.DEFAULT
+        transformation_function: 'src.transformations.torch_transform'
+        parameters_transformation:
+          weights: MaskRCNN_ResNet50_FPN_Weights.DEFAULT
+        classes_function: 'src.classes_mapping.classes_mapping'
+        parameters_classes:
+          weights: MaskRCNN_ResNet50_FPN_Weights.DEFAULT
+        unsqueeze: false
+        to_tensor: false
+        to_list : yes
+      postprocessing:
+        - src.postprocessing.threshold
+        - src.tracker.tracking
+      threshold_value : 0.75  
+      export:
+        video: yes
+        csv: no
+        resize: 720
 
   action_detection:
     slowfast_r50_detection:
-      framework: pytorchvideo
       load_model:
+        framework: pytorchvideo
         model_loading_function: 'torch.hub.load'
-        model_repo: 'facebookresearch/pytorchvideo'
-        model_variant: 'slowfast_r50_detection'
-        pretrained: yes
-        classes: ava
-      clip_duration: 0.9
-      
+        parameters_load_function:
+          repo_or_dir: 'facebookresearch/pytorchvideo'
+          model: 'slowfast_r50_detection'
+          pretrained: True
+        transformation_function: 'src.transformations.torchhub_transform'
+        parameters_transformation:
+          torchhub_model_variant: 'slowfast_r50_detection'
+        classes_function: 'src.classes_mapping.classes_mapping'
+        parameters_classes:
+          dataset: "ava"
+        clip_duration: 0.9
 
-
-  # semantic_segmentation:
-  #   FCN_ResNet101:
-  #       framework: torch
-  #       load_model:
-  #         model_loading_function: torchvision.models.segmentation.fcn_resnet101
-  #         weights: torchvision.models.segmentation.FCN_ResNet101_Weights
-  #         weight_version: DEFAULT
-  #       inference:
-  #         _target_: src.predictions_zen.inference
-  #         framework: torch
-  #       preprocessing:
-  #         unsqueeze: yes
-  #         to_tensor: false
-  #         to_list: false
-  #       postprocessing:
-  #         - src.postprocessing.soft_max
-  #       export:
-  #         video: yes
-  #         resize: (520)
-  #         csv: no
-  #          hdf5: yes
-  # keypoints:
-  #   KeypointRCNN_ResNet50:
-  #       framework: torch
-  #       load_model:
-  #         _target_: src.load_models_zen.load_model
-  #         model_loading_function: torchvision.models.detection.keypointrcnn_resnet50_fpn
-  #         weights: torchvision.models.detection.KeypointRCNN_ResNet50_FPN_Weights
-  #         weight_version: DEFAULT
-  #       inference:
-  #         _target_: src.predictions_zen.inference
-  #         framework: torch
-  #       preprocessing:
-  #         unsqueeze: false
-  #         to_tensor: false
-  #         to_list : yes
-  #       postprocessing:
-  #         - src.postprocessing.threshold
-  #         - src.tracker.tracking
-  #       threshold_value : 0.75  
-  #       export:
-  #         video: no
-  #         csv: yes
-
-  # instance_segmentation:
-  #   MaskRCNN_ResNet50_FPN:
-  #       framework: torch
-  #       load_model:
-  #         _target_: src.load_models_zen.load_model
-  #         model_loading_function: torchvision.models.detection.maskrcnn_resnet50_fpn
-  #         weights: torchvision.models.detection.MaskRCNN_ResNet50_FPN_Weights
-  #         weight_version: DEFAULT
-  #       inference:
-  #         _target_: src.predictions_zen.inference
-  #         framework: torch
-  #       preprocessing:
-  #         unsqueeze: false
-  #         to_tensor: false
-  #         to_list : yes
-  #       postprocessing:
-  #         - src.postprocessing.threshold
-  #         - src.tracker.tracking
-  #       threshold_value : 0.75  
-  #       export:
-  #         video: yes
-  #         csv: no
-  #         resize: 720
-  #  action_classification:
-  #     X3D:
-  #       framework: torchhub
-  #       load_model:
-  #         model_loading_function: 'torch.hub.load'
-  #         model_repo: 'facebookresearch/pytorchvideo'
-  #         model_variant: 'x3d_s'
-  #         pretrained: yes
-  #         classes: kinetics400
-  #       export:
-  #         csv: yes
+  action_classification:
+     X3D:
+       load_model:
+        framework: torchhub
+        model_loading_function: 'torch.hub.load'         
+        parameters_load_function:
+          repo_or_dir: 'facebookresearch/pytorchvideo'
+          model: 'x3d_s'
+          pretrained: True
+        transformation_function: 'src.transformations.torchhub_transform'
+        parameters_transformation:
+          torchhub_model_variant: 'x3d_s'
+        classes_function: 'src.classes_mapping.classes_mapping'
+        parameters_classes:           
+         dataset: kinetics400 
+       export:
+         csv: yes
     
 
 

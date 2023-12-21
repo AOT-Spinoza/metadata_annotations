@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import numpy as np
-
+from torchvision.models import get_weight
 import torch
 
 from torchvision.transforms import Compose, Lambda, CenterCrop, Normalize 
@@ -39,45 +39,48 @@ class NormalizeVideo(T.Normalize):
         tensor = tensor.view(C*T, H, W)
         tensor = super().forward(tensor)
         return tensor.view(C, T, H, W)
+    
 
 
-def ava_slowfast_transform_v2(
-    clip,
-    boxes,
-    num_frames = 32, 
-    crop_size = 256,
-    data_mean = torch.tensor([0.45, 0.45, 0.45]).view(3, 1, 1, 1),
-    data_std = torch.tensor([0.225, 0.225, 0.225]).view(3, 1, 1, 1),
-    slow_fast_alpha = 4, 
-):
-    boxes = np.array(boxes)
-    ori_boxes = boxes.copy()
 
-    height, width = clip.shape[2], clip.shape[3]
-    boxes = clip_boxes_to_image(boxes, height, width)
-    print(f"Before uniform, clip shape: {clip.shape}")
-    clip = UniformTemporalSubsample(num_frames)(clip)
-    clip = clip.float() / 255.0
-    print(f"Before short, clip shape: {clip.shape}")
-    clip, boxes = short_side_scale_with_boxes(clip, boxes, size=crop_size)
-    print(f"Before normalization, clip shape: {clip.shape}")
-    clip = NormalizeVideo(mean=data_mean, std=data_std)(clip)
-    clip = clip_boxes_to_image(boxes, clip.shape[2], clip.shape[3])
+## TODO: MAKE A NEW TRANSFORM BECAUSE OF DEPRECATING FUNCTIONS IN OLD ONE
+# def ava_slowfast_transform_v2(
+#     clip,
+#     boxes,
+#     num_frames = 32, 
+#     crop_size = 256,
+#     data_mean = torch.tensor([0.45, 0.45, 0.45]).view(3, 1, 1, 1),
+#     data_std = torch.tensor([0.225, 0.225, 0.225]).view(3, 1, 1, 1),
+#     slow_fast_alpha = 4, 
+# ):
+#     boxes = np.array(boxes)
+#     ori_boxes = boxes.copy()
 
-    # Incase of slowfast, generate both pathways
-    if slow_fast_alpha is not None:
-        fast_pathway = clip
-        # Perform temporal sampling from the fast pathway.
-        slow_pathway = torch.index_select(
-            clip,
-            1,
-            torch.linspace(
-                0, clip.shape[1] - 1, clip.shape[1] // slow_fast_alpha
-            ).long(),
-        )
-        clip = [slow_pathway, fast_pathway]
+#     height, width = clip.shape[2], clip.shape[3]
+#     boxes = clip_boxes_to_image(boxes, height, width)
+#     print(f"Before uniform, clip shape: {clip.shape}")
+#     clip = UniformTemporalSubsample(num_frames)(clip)
+#     clip = clip.float() / 255.0
+#     print(f"Before short, clip shape: {clip.shape}")
+#     clip, boxes = short_side_scale_with_boxes(clip, boxes, size=crop_size)
+#     print(f"Before normalization, clip shape: {clip.shape}")
+#     clip = NormalizeVideo(mean=data_mean, std=data_std)(clip)
+#     clip = clip_boxes_to_image(boxes, clip.shape[2], clip.shape[3])
 
-    return clip, torch.from_numpy(boxes), ori_boxes
+#     # Incase of slowfast, generate both pathways
+#     if slow_fast_alpha is not None:
+#         fast_pathway = clip
+#         # Perform temporal sampling from the fast pathway.
+#         slow_pathway = torch.index_select(
+#             clip,
+#             1,
+#             torch.linspace(
+#                 0, clip.shape[1] - 1, clip.shape[1] // slow_fast_alpha
+#             ).long(),
+#         )
+#         clip = [slow_pathway, fast_pathway]
+
+#     return clip, torch.from_numpy(boxes), ori_boxes
 
 def ava_slowfast_transform_deprecated(
     clip,
@@ -136,14 +139,14 @@ def ava_slowfast_transform_deprecated(
     return clip, torch.from_numpy(boxes), ori_boxes
     
 
-def torch_transform(torch_model_variant, config):
-    print(torch_model_variant)
-    if torch_model_variant == "slowfast_r50_detection":
-        print('into slowfast_r50_detection')
+def torchhub_transform(torchhub_model_variant, config):
+
+    if torchhub_model_variant == "slowfast_r50_detection":
         transform = ava_slowfast_transform_deprecated
         clip_duration = 0.9
+    
 
-    elif torch_model_variant == "x3d_s":
+    elif torchhub_model_variant == "x3d_s":
         mean = [0.45, 0.45, 0.45]
         std = [0.225, 0.225, 0.225]
         frames_per_second = 30
@@ -169,7 +172,7 @@ def torch_transform(torch_model_variant, config):
         }
 
         # Get transform parameters based on model
-        transform_params = model_transform_params[torch_model_variant]
+        transform_params = model_transform_params[torchhub_model_variant]
 
         # Note that this transform is specific to the slow_R50 model.
         transform =  ApplyTransformToKey(
@@ -181,7 +184,7 @@ def torch_transform(torch_model_variant, config):
                     Normalize(mean, std),
                     ShortSideScale(size=transform_params["side_size"]),
                     CenterCrop(
-                        crop_size=(transform_params["crop_size"], transform_params["crop_size"])
+                    transform_params["crop_size"]
                     )
                 ]
             ),
@@ -194,3 +197,10 @@ def torch_transform(torch_model_variant, config):
 
     return transform, clip_duration
 
+def torch_transform(weights,config):
+    weights = get_weight(weights)
+    transformation = weights.transforms()
+    return transformation, None
+
+def huggingface_transform(weights, config):
+    return None, None   
