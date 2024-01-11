@@ -69,3 +69,34 @@ def custom_read_video(video_object, start=0, end=None, read_video=True, read_aud
             audio_frames = torch.cat(frames, 0)
 
     return video_frames, audio_frames, (video_pts, audio_pts), video_object.get_metadata()
+
+import numpy as np
+
+def get_frames_by_indices(video_object, indices):
+    """
+    Reads a video file and returns the specified frames.
+
+    Args:
+        video_object (object): A video object.
+        indices (list): A list of frame indices.
+
+    Returns:
+        np.ndarray: A numpy array containing the specified frames in the format (num_frames, height, width, 3).
+    """
+    video_object.set_current_stream("video")
+    frames = []
+    indices = sorted(indices)
+    idx = 0
+    for i, frame in enumerate(video_object):
+        if i == indices[idx]:
+            # Convert the frame to a numpy array and add it to the list
+            frame_np = frame['data'].permute(1, 2, 0).numpy()
+            frames.append(frame_np)
+            idx += 1
+            if idx == len(indices):
+                break
+    if len(frames) > 0:
+        video_frames = np.stack(frames)
+    else:
+        video_frames = np.empty((0, frame['data'].shape[1], frame['data'].shape[2], 3))
+    return video_frames
