@@ -13,8 +13,9 @@
 # limitations under the License.
 import numpy as np
 from torchvision.models import get_weight
+from src.load_models_and_config import import_from
 import torch
-
+from transformers import AutoProcessor, AutoModelForCausalLM
 from torchvision.transforms import Compose, Lambda, CenterCrop, Normalize 
 from pytorchvideo.transforms import (
     ApplyTransformToKey,
@@ -139,7 +140,7 @@ def ava_slowfast_transform_deprecated(
     return clip, torch.from_numpy(boxes), ori_boxes
     
 
-def torchhub_transform(torchhub_model_variant, config):
+def torchhub_transform(torchhub_model_variant):
     if torchhub_model_variant == "MiDaS":
         midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms")
         transform = midas_transforms.dpt_transform
@@ -200,10 +201,15 @@ def torchhub_transform(torchhub_model_variant, config):
 
     return transform, clip_duration
 
-def torch_transform(weights,config):
+def torch_transform(weights):
     weights = get_weight(weights)
     transformation = weights.transforms()
     return transformation, None
 
-def huggingface_transform(weights, config):
-    return None, None   
+def huggingface_transform(processor_function, pretrained_model_name_or_path):
+    print(f"processor_function: {processor_function}")
+    processor_function = import_from(processor_function)
+    processor = processor_function(pretrained_model_name_or_path)
+    clip_duration = None
+
+    return processor, clip_duration

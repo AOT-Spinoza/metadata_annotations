@@ -1,11 +1,18 @@
 import importlib
-
+from transformers import AutoProcessor, AutoModelForCausalLM
 
 def import_from(dotted_path):
-    module_name, function_name = dotted_path.rsplit('.', 1)
-    module = importlib.import_module(module_name)
-    function = getattr(module, function_name)
-    return function
+    parts = dotted_path.split('.')
+    if parts[-1] == 'from_pretrained':
+        module_name, class_name = '.'.join(parts[:-2]), parts[-2]
+        module = importlib.import_module(module_name)
+        class_ = getattr(module, class_name)
+        return getattr(class_, 'from_pretrained')
+    else:
+        module_name, function_name = '.'.join(parts[:-1]), parts[-1]
+        module = importlib.import_module(module_name)
+        function = getattr(module, function_name)
+        return function
 
 
 def load_and_configure_model(model_config, config):
@@ -26,7 +33,7 @@ def load_and_configure_model(model_config, config):
     load_function = import_from(model_config.model_loading_function)
 
     # Load the model
-    if framework == "torchhub" or framework == "pytorchvideo":
+    if framework == "torchhub" or framework == "pytorchvideo" or framework == "huggingface":
         model = load_function(**model_config.parameters_load_function)
     elif framework == "torch":
         # Dynamically import the weights for the current model
@@ -37,10 +44,9 @@ def load_and_configure_model(model_config, config):
         # model_config.parameters_classes['weights'] = weights
         model = load_function(**model_config.parameters_load_function)
         print('success')
-    print(model_config.parameters_transformation)
     # Perform necessary transformations
     transformation_function = import_from(model_config.transformation_function)
-    transformation, clip_duration = transformation_function(**model_config.parameters_transformation, config =config)
+    transformation, clip_duration = transformation_function(**model_config.parameters_transformation)
 
     # Load the class names from the specified file
     try:
@@ -68,7 +74,6 @@ def load_all_models_and_metadata(config):
             model, transformation, class_list, clip_duration = load_and_configure_model(model_config.load_model, config)
             transformations[task_type][model_name] = transformation
             models[task_type][model_name] = model
-            print(classes)
             classes[task_type][model_name] = class_list
             clip_durations[task_type][model_name] = clip_duration
 

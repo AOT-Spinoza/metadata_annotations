@@ -1,15 +1,16 @@
 tasks:   
-  # captioning:
-  #   GIT:
-  #     framework: huggingface
-  #     load_model:
-  #       model_loading_function: 'transformers.AutoModelForSeq2SeqLM.from_pretrained'
-  #       parameters_load_function: 
-  #        pretrained_model_name_or_path : "microsoft/git-base-vatex"
-  #       transformation_function: 'transformation_functions.huggingface_transform'
-  #       parameters_transformation:
-  #         model_name: "microsoft/git-base-vatex"
-  #       pretrained: yes
+ captioning:
+   GIT:
+     framework: huggingface
+     load_model:
+       framework: huggingface
+       model_loading_function: 'transformers.AutoModelForCausalLM.from_pretrained'
+       parameters_load_function: 
+        pretrained_model_name_or_path : "microsoft/git-base-vatex"
+       transformation_function: src.transformations.huggingface_transform
+       parameters_transformation:
+        processor_function: transformers.AutoProcessor.from_pretrained
+        pretrained_model_name_or_path: "microsoft/git-base-vatex" 
 
   
 
@@ -64,30 +65,30 @@ tasks:
   #       csv: no
   #       hdf5: yes
 
-  keypoints:
-    KeypointRCNN_ResNet50:
-      load_model:
-        framework: torch
-        model_loading_function: torchvision.models.detection.keypointrcnn_resnet50_fpn
-        parameters_load_function:
-          weights: KeypointRCNN_ResNet50_FPN_Weights.DEFAULT
-        transformation_function: 'src.transformations.torch_transform'
-        parameters_transformation:
-          weights: KeypointRCNN_ResNet50_FPN_Weights.DEFAULT
-        classes_function: 'src.classes_mapping.classes_mapping'
-        parameters_classes:
-          weights: KeypointRCNN_ResNet50_FPN_Weights.DEFAULT
-      preprocessing:
-        unsqueeze: false
-        to_tensor: false
-        to_list : yes
-      postprocessing:
-        - src.postprocessing.threshold
-        - src.tracker.tracking
-      threshold_value : 0.75  
-      export:
-        video: yes
-        csv: yes
+  # keypoints:
+  #   KeypointRCNN_ResNet50:
+  #     load_model:
+  #       framework: torch
+  #       model_loading_function: torchvision.models.detection.keypointrcnn_resnet50_fpn
+  #       parameters_load_function:
+  #         weights: KeypointRCNN_ResNet50_FPN_Weights.DEFAULT
+  #       transformation_function: 'src.transformations.torch_transform'
+  #       parameters_transformation:
+  #         weights: KeypointRCNN_ResNet50_FPN_Weights.DEFAULT
+  #       classes_function: 'src.classes_mapping.classes_mapping'
+  #       parameters_classes:
+  #         weights: KeypointRCNN_ResNet50_FPN_Weights.DEFAULT
+  #     preprocessing:
+  #       unsqueeze: false
+  #       to_tensor: false
+  #       to_list : yes
+  #     postprocessing:
+  #       - src.postprocessing.threshold
+  #       - src.tracker.tracking
+  #     threshold_value : 0.75  
+  #     export:
+  #       video: yes
+  #       csv: yes
 
   # instance_segmentation:
   #   MaskRCNN_ResNet50_FPN:
@@ -149,26 +150,26 @@ tasks:
   #      export:
   #        csv: yes
     
-  depth_estimation:
-    MiDaS:
-      load_model:
-        framework: torchhub
-        model_loading_function: 'torch.hub.load'
-        parameters_load_function:
-          repo_or_dir: 'intel-isl/MiDaS'
-          model: "DPT_Large"
-          pretrained: True
-        transformation_function: 'src.transformations.torchhub_transform'
-        parameters_transformation:
-          torchhub_model_variant: 'MiDaS'
-      preprocessing:
-        unsqueeze: false
-        to_tensor: false
-        to_list: false
-      export:
-        video: yes
-        csv: no
-        hdf5: no
+  # depth_estimation:
+  #   MiDaS:
+  #     load_model:
+  #       framework: torchhub
+  #       model_loading_function: 'torch.hub.load'
+  #       parameters_load_function:
+  #         repo_or_dir: 'intel-isl/MiDaS'
+  #         model: "DPT_Large"
+  #         pretrained: True
+  #       transformation_function: 'src.transformations.torchhub_transform'
+  #       parameters_transformation:
+  #         torchhub_model_variant: 'MiDaS'
+  #     preprocessing:
+  #       unsqueeze: false
+  #       to_tensor: false
+  #       to_list: false
+  #     export:
+  #       video: yes
+  #       csv: no
+  #       hdf5: no
 
 
 
