@@ -116,9 +116,12 @@ def determine_and_execute_export_function(data_dict,classes, config):
     """
     for task_type, task_data in data_dict.items():
         for model_name, model_data in task_data.items():
-            classes = classes[task_type][model_name]
-            if config['tasks'][task_type][model_name]['framework'] == "torchhub":
-                if config['tasks'][task_type][model_name]['export'].get('csv', None):
+            if classes != None:
+                classes = classes[task_type][model_name]
+            if config['tasks'][task_type][model_name]["load_model"]['framework'] == "torchhub":
+                export_settings = config['tasks'][task_type][model_name]['export']
+                resize_value =  export_settings.get('resize', None)
+                if export_settings.get('csv', None):
                     # Save the segmentation to a CSV file 
                     for video_name, data in model_data.items():
                         output_path = config['outputs']
@@ -129,8 +132,18 @@ def determine_and_execute_export_function(data_dict,classes, config):
                                 writer = csv.DictWriter(f, fieldnames=['pred_class', 'pred_value'])
                                 writer.writeheader()
                                 writer.writerow(data)
+                if export_settings.get('video', False):
+                    for video_name, data in model_data.items():
+                        output_path = config['outputs']
+                        task_dir = os.path.join(output_path, video_name, task_type, model_name)
+                        video_name = video_name.split('.')[0]
+                        os.makedirs(task_dir, exist_ok=True)
+                        if model_name == "MiDaS":
+                            # Save the segmentation as a video
+                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
+                            print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
 
-            if config['tasks'][task_type][model_name]['framework'] == "torch":
+            if config['tasks'][task_type][model_name]["load_model"]['framework'] == "torch":
                 
                 for video_name, data in model_data.items():
                     

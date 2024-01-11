@@ -140,8 +140,11 @@ def ava_slowfast_transform_deprecated(
     
 
 def torchhub_transform(torchhub_model_variant, config):
-
-    if torchhub_model_variant == "slowfast_r50_detection":
+    if torchhub_model_variant == "MiDaS":
+        midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms")
+        transform = midas_transforms.dpt_transform
+        clip_duration = None
+    elif torchhub_model_variant == "slowfast_r50_detection":
         transform = ava_slowfast_transform_deprecated
         clip_duration = 0.9
     

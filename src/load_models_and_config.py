@@ -43,8 +43,11 @@ def load_and_configure_model(model_config, config):
     transformation, clip_duration = transformation_function(**model_config.parameters_transformation, config =config)
 
     # Load the class names from the specified file
-    classes_function = import_from(model_config.classes_function)
-    classes_map = classes_function(model_config.parameters_classes, config)
+    try:
+        classes_function = import_from(model_config.classes_function)
+        classes_map = classes_function(model_config.parameters_classes)
+    except:
+        classes_map = None
 
     # Return the loaded model, transformation function, class name mapping, and clip duration
     return model, transformation, classes_map, clip_duration

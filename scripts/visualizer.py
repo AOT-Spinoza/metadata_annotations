@@ -30,6 +30,8 @@ def get_video_data(video_name, config, resize_value=None):
     Returns:
         tuple: A tuple containing the resized frames and the frames per second (fps).
     """
+
+
     video_name += ".mp4"
     video = find_video_path(video_name, config)
     video_reader = torchvision.io.VideoReader(video, "video")
@@ -60,6 +62,7 @@ def write_video(out_video_name, frames, fps):
     Returns:
         None
     """
+    
     frames_tensor = torch.stack(frames)
     frames_tensor = frames_tensor.permute(0, 2, 3, 1)
     torchvision.io.write_video(out_video_name, frames_tensor, fps)
@@ -129,6 +132,18 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
         None
     """
     # Create a VideoWriter object   
+    if task_type == 'depth_estimation':
+        _, fps = get_video_data(video_name, config, resize_value)
+        # Normalize the output to the range 0-255
+        frames = []
+        for output in data:
+            output = (output - output.min()) / (output.max() - output.min()) * 255
+            output = output.type(torch.uint8)
+            # The output of MiDaS is a single-channel depth map, so we repeat it to create a 3-channel image
+            output = output.squeeze(0).repeat(3, 1, 1)
+            output = output.squeeze(1)
+            frames.append(output)
+        write_video(out_video_name, frames, fps)
 
     if task_type == 'instance_segmentation':
         resized_frames, fps = get_video_data(video_name, config, resize_value)

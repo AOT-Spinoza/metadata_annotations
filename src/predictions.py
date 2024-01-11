@@ -23,7 +23,7 @@ def inference(config, models, transformations, clip_durations, classes, input_di
     for task_type, task_models in models.items():
         output_dict[task_type] = {}
         for model_name, model in task_models.items():
-            framework = config.tasks[task_type][model_name].framework
+            framework = config.tasks[task_type][model_name].load_model.framework
             if framework == 'torch':
                 output_dict[task_type][model_name] = torch_inference.infer_videos(video_files, model, transformations[task_type][model_name], config, task_type, model_name)
             if framework == 'torchhub':

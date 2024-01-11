@@ -22,6 +22,7 @@ def infer_videos(video_files, model, transformation, config, task_type, model_na
         gc.collect()
         # Initialize the list of predictions for this video
         outputs_all[os.path.basename(video)] = []
+
         for frame_count, frame in enumerate(tqdm(video_frames, desc=f"Processing frames for {os.path.basename(video)}", leave=False), start=1):
             # Apply preprocessing steps if they are specified in the config
             if config.tasks[task_type][model_name].preprocessing.unsqueeze:
