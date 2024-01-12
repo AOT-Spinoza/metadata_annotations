@@ -12,34 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import numpy as np
-from torchvision.models import get_weight
-from src.load_models_and_config import import_from
 import torch
-from transformers import AutoProcessor, AutoModelForCausalLM
-from torchvision.transforms import Compose, Lambda, CenterCrop, Normalize 
-from pytorchvideo.transforms import (
-    ApplyTransformToKey,
-    ShortSideScale,
-    UniformTemporalSubsample,
-    
-)
-from torchvision.transforms import v2 as T
+from torchvision.models import get_weight
+from torchvision.transforms import CenterCrop, Compose, Lambda, Normalize, v2 as T
 from torchvision.transforms._functional_video import normalize
+from torchvision.transforms._transforms_video import CenterCropVideo, NormalizeVideo
+from transformers import AutoModelForCausalLM, AutoProcessor
 
-from pytorchvideo.transforms.functional import (
-    uniform_temporal_subsample,
-    short_side_scale_with_boxes,
-    clip_boxes_to_image,
-)
+from pytorchvideo.transforms import ApplyTransformToKey, ShortSideScale, UniformTemporalSubsample
+from pytorchvideo.transforms.functional import clip_boxes_to_image, short_side_scale_with_boxes, uniform_temporal_subsample
 
+from src.load_models_and_config import import_from
 
-class NormalizeVideo(T.Normalize):
-    def forward(self, tensor):
-        # tensor shape: (C, T, H, W)
-        C, T, H, W = tensor.shape
-        tensor = tensor.view(C*T, H, W)
-        tensor = super().forward(tensor)
-        return tensor.view(C, T, H, W)
+#class NormalizeVideo(T.Normalize):
+#    def forward(self, tensor):
+#        # tensor shape: (C, T, H, W)
+#        C, T, H, W = tensor.shape
+#        tensor = tensor.permute(0, 2, 3, 1).contiguous().view(C, H, W*T)
+#        tensor = tensor.view(C*T, H, W)
+#        tensor = super().forward(tensor)
+#        return tensor.view(C, T, H, W)
     
 
 
@@ -176,7 +168,7 @@ def torchhub_transform(torchhub_model_variant):
         }
 
         # Get transform parameters based on model
-        transform_params = model_transform_params[torchhub_model_variant]
+        transform_params = model_transform_params["x3d_s"]
 
         # Note that this transform is specific to the slow_R50 model.
         transform =  ApplyTransformToKey(
@@ -185,10 +177,10 @@ def torchhub_transform(torchhub_model_variant):
                 [
                     UniformTemporalSubsample(transform_params["num_frames"]),
                     Lambda(lambda x: x/255.0),
-                    Normalize(mean, std),
+                    NormalizeVideo(mean, std),
                     ShortSideScale(size=transform_params["side_size"]),
-                    CenterCrop(
-                    transform_params["crop_size"]
+                    CenterCropVideo(
+                        crop_size=(transform_params["crop_size"], transform_params["crop_size"])
                     )
                 ]
             ),

@@ -14,7 +14,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import torchvision.transforms.functional as F
-
+import torch.nn.functional as FF
 
 plt.rcParams["savefig.bbox"] = 'tight'
 
@@ -39,6 +39,7 @@ def get_video_data(video_name, config, resize_value=None):
     fps = meta['video']['fps'][0]
     del video_reader
     gc.collect()
+    print(resize_value)
     if resize_value is not None:
         resized_frames = [resize(frame, size=resize_value) for frame in video_frames]
     else:
@@ -102,6 +103,7 @@ def create_semantic_masks(predictions, video_name, config, resize_value=None):
     Returns:
         list: A list containing the masked frames and metadata for the video.
     """
+    
     # Find the video path using the video name and config
     frames, fps = get_video_data(video_name, config, resize_value)                        
     # The dimension along which the classes are represented
@@ -114,7 +116,10 @@ def create_semantic_masks(predictions, video_name, config, resize_value=None):
     all_classes_masks = (prediction.argmax(class_dim) == torch.arange(num_classes)[:, None, None, None])
     # The shape of all_classes_masks is (C, T, H, W) so we need to swap first two axes
     all_classes_masks = all_classes_masks.swapaxes(0, 1)
+
+    # Apply the masks to the frames
     masked_frames = [draw_segmentation_masks(frame, masks=mask, alpha=0.5) for frame, mask in zip(frames, all_classes_masks)]
+
     return masked_frames, fps
 
 
@@ -131,6 +136,7 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
     Returns:
         None
     """
+
     # Create a VideoWriter object   
     if task_type == 'depth_estimation':
         _, fps = get_video_data(video_name, config, resize_value)
@@ -147,10 +153,13 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
 
     if task_type == 'instance_segmentation':
         resized_frames, fps = get_video_data(video_name, config, resize_value)
+        print(resized_frames[0].shape)
+
         score_threshold = .75
         prob_threshold = .5
         boolean_masks = [
             (out['masks'][out['scores'] > score_threshold] > prob_threshold) for out in data]
+        print(boolean_masks[0].shape)
         frames_with_masks = [
             draw_segmentation_masks(img, mask.squeeze(1))
             for img, mask in zip(resized_frames, boolean_masks)
@@ -158,8 +167,8 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
         write_video(out_video_name, frames_with_masks, fps)
 
     if task_type == 'semantic_segmentation':
-        video_masked, fps = create_semantic_masks(data,video_name, config)	
-        write_video(out_video_name, video_masked, fps, permute = (0, 2, 3, 1))
+        video_masked, fps = create_semantic_masks(data,video_name, config, resize_value)	
+        write_video(out_video_name, video_masked, fps)
     if task_type == 'keypoints':
         # Create a dictionary to store the colors for each unique ID
         id_to_color = {}

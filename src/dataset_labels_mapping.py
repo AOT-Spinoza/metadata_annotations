@@ -11,7 +11,7 @@ def classes_mapping(parameters_classes, config):
     elif 'dataset' in parameters_classes:
         dataset_trained_on = parameters_classes['dataset']
         classes_file_path = config.class_paths[dataset_trained_on]
-        if dataset_trained_on == 'kinetics':
+        if dataset_trained_on == "kinetics400":
             with open(classes_file_path, 'r') as f:
                 kinetics_classnames = json.load(f)
     

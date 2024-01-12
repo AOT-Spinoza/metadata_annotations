@@ -2,6 +2,18 @@ import importlib
 from transformers import AutoProcessor, AutoModelForCausalLM
 
 def import_from(dotted_path):
+    """
+    Import a function or class from a dotted path.
+
+    Args:
+        dotted_path (str): The dotted path of the function or class to import.
+
+    Returns:
+        function or class: The imported function or class.
+
+    Raises:
+        ImportError: If the module or attribute does not exist.
+    """
     parts = dotted_path.split('.')
     if parts[-1] == 'from_pretrained':
         module_name, class_name = '.'.join(parts[:-2]), parts[-2]
@@ -29,29 +41,23 @@ def load_and_configure_model(model_config, config):
     """
     # Extract model configuration parameters
     framework = model_config.framework
-    print(model_config.parameters_transformation)
+
     load_function = import_from(model_config.model_loading_function)
 
     # Load the model
-    if framework == "torchhub" or framework == "pytorchvideo" or framework == "huggingface":
-        model = load_function(**model_config.parameters_load_function)
-    elif framework == "torch":
-        # Dynamically import the weights for the current model
-        # print(model_config.parameters_load_function.weights)
-        # weights = import_from(model_config.parameters_load_function.weights)
-        # model_config.parameters_load_function['weights'] = weights
-        # model_config.parameters_transformation['weights'] = weights
-        # model_config.parameters_classes['weights'] = weights
-        model = load_function(**model_config.parameters_load_function)
-        print('success')
+
+    model = load_function(**model_config.parameters_load_function)
+
     # Perform necessary transformations
     transformation_function = import_from(model_config.transformation_function)
     transformation, clip_duration = transformation_function(**model_config.parameters_transformation)
 
     # Load the class names from the specified file
     try:
+
         classes_function = import_from(model_config.classes_function)
-        classes_map = classes_function(model_config.parameters_classes)
+        classes_map = classes_function(model_config.parameters_classes, config)
+
     except:
         classes_map = None
 
@@ -59,6 +65,19 @@ def load_and_configure_model(model_config, config):
     return model, transformation, classes_map, clip_duration
 
 def load_all_models_and_metadata(config):
+    """
+    Load all models and metadata based on the provided configuration.
+
+    Args:
+        config (dict): The configuration containing information about the models to load.
+
+    Returns:
+        tuple: A tuple containing dictionaries of models, transformations, classes, and clip durations.
+            - models (dict): A nested dictionary containing the loaded models.
+            - transformations (dict): A nested dictionary containing the transformations for each model.
+            - classes (dict): A nested dictionary containing the class lists for each model.
+            - clip_durations (dict): A nested dictionary containing the clip durations for each model.
+    """
     models = {}
     transformations = {}
     classes = {}
@@ -69,7 +88,6 @@ def load_all_models_and_metadata(config):
         classes[task_type] = {}
         clip_durations[task_type] = {}
         for model_name, model_config in task.items():
-            print(model_name)
             # Dynamically import the model loading function
             model, transformation, class_list, clip_duration = load_and_configure_model(model_config.load_model, config)
             transformations[task_type][model_name] = transformation

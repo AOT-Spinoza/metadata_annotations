@@ -28,13 +28,14 @@ def get_person_bboxes(video_name):
     # Extract the base video name and remove the file extension
     base_video_name = os.path.basename(video_name)
     base_video_name_without_extension = os.path.splitext(base_video_name)[0]
-
+    
     # Define the task map and model name
     task_map = "object_detection"
     model_name = "fasterrcnn_resnet50_fpn_v2"
 
     # Construct the HDF5 file path
     map_name = f"{task_map}/{model_name}"
+    print(map_name)
     hdf5_file_name = f"./result/{base_video_name}/{map_name}/{base_video_name_without_extension}_{model_name}.hdf5"
 
     # Print the HDF5 file name for debugging purposes
@@ -161,16 +162,17 @@ def infer_videos(video_files, model, transformation, clip_duration, classes, mod
             # The model is trained on AVA and AVA labels are 1 indexed, so prepend 0 to convert to 0 index.
             preds = torch.cat([torch.zeros(preds.shape[0], 1), preds], dim=1)
 
-            classes_dict = classes[0][0]
+            # classes_dict = classes[0][0]
             # Get the class with the highest probability for each instance of a person
             max_probs, max_classes = torch.max(preds[:, 1:], dim=1)
             max_probs = max_probs.tolist()
             max_classes = max_classes.tolist()
             max_classes = [i+1 for i in max_classes]
             # Use the indices of the max probabilities to get the class names
-            class_names = [classes_dict[i] for i in max_classes]
+            class_names = [classes[i] for i in max_classes]
             # Store the results in the output dictionary
             ## TODO: probably having to add the boxes as well for exporting later
+            print(class_names)
             outputs_all[os.path.basename(video_path)] = {middle_frame_number: {'max_probs': max_probs, 'max_classes': class_names}}
             outputs_all[os.path.basename(video_path)] = {middle_frame_number: preds}
 

@@ -54,18 +54,32 @@ def postprocess_predictions(predictions, config):
     Returns:
         dict: A dictionary containing the post-processed predictions.
     """
+    # Initialize an empty dictionary to store the post-processed predictions
     postprocessed = {}
+
+    # Loop over each task type and its corresponding results in the predictions
     for task_type, task_results in predictions.items():
         postprocessed[task_type] = {}
+
+        # Loop over each model and its corresponding videos in the task results
         for model_name, videos in task_results.items():
+
+            # If no post-processing is specified for this model, copy the videos as is
             if config['tasks'][task_type][model_name].get('postprocessing', None) == None:
                 postprocessed[task_type][model_name] = videos
                 continue
+
+            # Get the list of post-processing functions for this model
             postprocessing_func_names = config['tasks'][task_type][model_name]['postprocessing']
             postprocessed[task_type][model_name] = {}
+
+            # Loop over each video and its corresponding prediction in the videos
             for video_name, prediction in videos.items():
                 postprocessed[task_type][model_name][video_name] = prediction
+
+                # Loop over each post-processing function
                 for postprocessing_func in postprocessing_func_names:
+
                     # Dynamically import the post-processing function
                     module_name, function_name = postprocessing_func.rsplit('.', 1)
                     module = importlib.import_module(module_name)
@@ -73,13 +87,12 @@ def postprocess_predictions(predictions, config):
                     
                     # Apply the post-processing function
                     if function_name == 'threshold':
-                        threshold_value = config['tasks'][task_type][model_name].get('threshold_value', 0.75)  # Use a default value if not specified
+                        # If the function is 'threshold', get the threshold value from the config (default to 0.75 if not specified)
+                        threshold_value = config['tasks'][task_type][model_name].get('threshold_value', 0.75)
                         postprocessed[task_type][model_name][video_name] = postprocessing_function(postprocessed[task_type][model_name][video_name], threshold_value)
                     else:
-                        # print(f"Before {function_name}, shape: {postprocessed[task_type][model_name][video_name][0].shape}")
-                        print('postprocessing')
-                        print(model_name)
+                        # For other functions, pass the prediction and the config as arguments
                         postprocessed[task_type][model_name][video_name] = postprocessing_function(postprocessed[task_type][model_name][video_name], config)
-                        #  print(f"After {function_name}, shape: {postprocessed[task_type][model_name][video_name][0].shape}")
-                        print('done')
+
+    # Return the post-processed predictions
     return postprocessed
