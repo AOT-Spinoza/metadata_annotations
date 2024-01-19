@@ -118,7 +118,7 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
         for model_name, model_data in task_data.items():
             if classes_dict[task_type][model_name] != None:
                 classes = classes_dict[task_type][model_name]
-            if config['tasks'][task_type][model_name]["load_model"]['framework'] == "torchhub":
+            if config['tasks'][task_type][model_name]["load_model"]['framework'] == "torchhub" or "hugginface":
                 export_settings = config['tasks'][task_type][model_name]['export']
                 resize_value =  export_settings.get('resize', None)
                 print(export_settings)
@@ -133,6 +133,12 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                                 writer = csv.DictWriter(f, fieldnames=['pred_class', 'pred_value'])
                                 writer.writeheader()
                                 writer.writerow(data)
+                        if model_name == "GIT":
+                            with open(os.path.join(task_dir, f"{video_name}_{model_name}.csv"), 'w', newline='') as f:
+                                writer = csv.writer(f)
+                                writer.writerow(['Caption'])
+                                writer.writerow([data])
+
                 if export_settings.get('video', False):
                     for video_name, data in model_data.items():
                         output_path = config['outputs']
@@ -144,7 +150,7 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                             visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
                             print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
 
-            if config['tasks'][task_type][model_name]["load_model"]['framework'] == "torch":
+            if config['tasks'][task_type][model_name]["load_model"]['framework'] == "torch" or "pytorchvideo":
                 
                 for video_name, data in model_data.items():
                     
@@ -196,3 +202,10 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                             print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
                         if export_settings.get('hdf5', False):
                             save_detection_as_hdf5(data, os.path.join(task_dir, f"{video_name}_{model_name}.hdf5")) 
+                    if task_type == "action_detection":
+                        # Check if video export is requested
+                        if export_settings.get('video', False):
+                            # Save the action detection as a video
+                            print('Creating video')
+                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
+                            print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')

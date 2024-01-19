@@ -13,8 +13,8 @@ def tracking(predictions, config):
         list of dicts: A list of dictionaries containing the tracked instances.
     """
     # Initialize SORT tracker
-    tracker = Sort()
-    
+    tracker = Sort(max_age=30, min_hits=5, iou_threshold=0.6)
+    print('Tracking')
     tracked_predictions = []
     for prediction in predictions:
         bboxes_scores = np.column_stack((prediction['boxes'], prediction['scores']))
@@ -38,7 +38,6 @@ def tracking(predictions, config):
         tracked_prediction['boxes'] = torch.from_numpy(new_boxes)
         tracked_prediction['ids'] = torch.from_numpy(ids.astype(int))
         tracked_prediction['scores'] = torch.from_numpy(score_identifier)
-
         tracked_predictions.append(tracked_prediction)
 
     return tracked_predictions

@@ -1,4 +1,4 @@
-
+import os
 from torchvision.transforms.functional import resize
 from torchvision.utils import draw_segmentation_masks
 from PIL import Image
@@ -39,7 +39,7 @@ def get_video_data(video_name, config, resize_value=None):
     fps = meta['video']['fps'][0]
     del video_reader
     gc.collect()
-    print(resize_value)
+
     if resize_value is not None:
         resized_frames = [resize(frame, size=resize_value) for frame in video_frames]
     else:
@@ -153,13 +153,13 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
 
     if task_type == 'instance_segmentation':
         resized_frames, fps = get_video_data(video_name, config, resize_value)
-        print(resized_frames[0].shape)
+
 
         score_threshold = .75
         prob_threshold = .5
         boolean_masks = [
             (out['masks'][out['scores'] > score_threshold] > prob_threshold) for out in data]
-        print(boolean_masks[0].shape)
+
         frames_with_masks = [
             draw_segmentation_masks(img, mask.squeeze(1))
             for img, mask in zip(resized_frames, boolean_masks)
@@ -198,10 +198,39 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
         video_frames, fps = get_video_data(video_name, config, resize_value)
         overdrawn_frames = []
         for frame, prediction in zip(video_frames, data):
+
             # Get the bounding boxes and labels from the prediction
             boxes = prediction['boxes']
-            labels = [classes[i] for i in prediction['labels']]  # Fixed the syntax error here
+            labels = [classes[i] for i in prediction['labels']]  
             # Draw the bounding boxes on the frame
             frame = torchvision.utils.draw_bounding_boxes(frame, boxes, labels, font="/tank/tgn252/metadata_annotations/library/GothamMedium.ttf", font_size=20, width=4)
+            overdrawn_frames.append(frame)
+        write_video(out_video_name, overdrawn_frames, fps)
+
+    if task_type == 'action_detection':
+        # Create a dictionary to store the colors for each unique ID
+        id_to_color = {}
+        video_frames, fps = get_video_data(video_name, config, resize_value)
+        overdrawn_frames = []
+        for frame_number, (frame, prediction) in enumerate(zip(video_frames, data)):
+            if prediction is None:  # Skip the frame if the prediction is None
+                print(f"Empty prediction for frame number {frame_number}")
+                continue
+            
+            # Get the bounding boxes, labels, and IDs from the prediction
+            boxes = prediction['boxes']
+            labels =  prediction['max_classes']
+            ids = prediction['ids']
+            # Draw the bounding boxes on the frame with colors based on IDs
+            for i, id in enumerate(ids):
+                # Check if the unique ID is in the dictionary
+                if id not in id_to_color:
+                    # If it's not, generate a new color and add it to the dictionary
+                    id_to_color[id] = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+                # Get the color for the unique ID
+                color = id_to_color[id]
+                # Draw the bounding box with the color
+                frame = torchvision.utils.draw_bounding_boxes(frame, boxes[i].unsqueeze(0), [labels[i]], colors=color, font="/tank/tgn252/metadata_annotations/library/GothamMedium.ttf", font_size=20, width=4)
+
             overdrawn_frames.append(frame)
         write_video(out_video_name, overdrawn_frames, fps)

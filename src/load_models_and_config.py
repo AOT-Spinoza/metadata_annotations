@@ -95,4 +95,5 @@ def load_all_models_and_metadata(config):
             classes[task_type][model_name] = class_list
             clip_durations[task_type][model_name] = clip_duration
 
+
     return models, transformations, classes, clip_durations

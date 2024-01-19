@@ -24,56 +24,6 @@ from pytorchvideo.transforms.functional import clip_boxes_to_image, short_side_s
 
 from src.load_models_and_config import import_from
 
-#class NormalizeVideo(T.Normalize):
-#    def forward(self, tensor):
-#        # tensor shape: (C, T, H, W)
-#        C, T, H, W = tensor.shape
-#        tensor = tensor.permute(0, 2, 3, 1).contiguous().view(C, H, W*T)
-#        tensor = tensor.view(C*T, H, W)
-#        tensor = super().forward(tensor)
-#        return tensor.view(C, T, H, W)
-    
-
-
-
-## TODO: MAKE A NEW TRANSFORM BECAUSE OF DEPRECATING FUNCTIONS IN OLD ONE
-# def ava_slowfast_transform_v2(
-#     clip,
-#     boxes,
-#     num_frames = 32, 
-#     crop_size = 256,
-#     data_mean = torch.tensor([0.45, 0.45, 0.45]).view(3, 1, 1, 1),
-#     data_std = torch.tensor([0.225, 0.225, 0.225]).view(3, 1, 1, 1),
-#     slow_fast_alpha = 4, 
-# ):
-#     boxes = np.array(boxes)
-#     ori_boxes = boxes.copy()
-
-#     height, width = clip.shape[2], clip.shape[3]
-#     boxes = clip_boxes_to_image(boxes, height, width)
-#     print(f"Before uniform, clip shape: {clip.shape}")
-#     clip = UniformTemporalSubsample(num_frames)(clip)
-#     clip = clip.float() / 255.0
-#     print(f"Before short, clip shape: {clip.shape}")
-#     clip, boxes = short_side_scale_with_boxes(clip, boxes, size=crop_size)
-#     print(f"Before normalization, clip shape: {clip.shape}")
-#     clip = NormalizeVideo(mean=data_mean, std=data_std)(clip)
-#     clip = clip_boxes_to_image(boxes, clip.shape[2], clip.shape[3])
-
-#     # Incase of slowfast, generate both pathways
-#     if slow_fast_alpha is not None:
-#         fast_pathway = clip
-#         # Perform temporal sampling from the fast pathway.
-#         slow_pathway = torch.index_select(
-#             clip,
-#             1,
-#             torch.linspace(
-#                 0, clip.shape[1] - 1, clip.shape[1] // slow_fast_alpha
-#             ).long(),
-#         )
-#         clip = [slow_pathway, fast_pathway]
-
-#     return clip, torch.from_numpy(boxes), ori_boxes
 
 def ava_slowfast_transform_deprecated(
     clip,
@@ -132,14 +82,14 @@ def ava_slowfast_transform_deprecated(
     return clip, torch.from_numpy(boxes), ori_boxes
     
 
-def torchhub_transform(torchhub_model_variant):
+def torchhub_transform(torchhub_model_variant, clip_duration):
     if torchhub_model_variant == "MiDaS":
         midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms")
         transform = midas_transforms.dpt_transform
-        clip_duration = None
+        clip_duration = clip_duration
     elif torchhub_model_variant == "slowfast_r50_detection":
         transform = ava_slowfast_transform_deprecated
-        clip_duration = 0.9
+        clip_duration = clip_duration
     
 
     elif torchhub_model_variant == "x3d_s":
@@ -195,7 +145,7 @@ def torchhub_transform(torchhub_model_variant):
 
 def torch_transform(weights):
     weights = get_weight(weights)
-    transformation = weights.transforms()
+    transformation = weights.transforms(antialias=True)
     return transformation, None
 
 def huggingface_transform(processor_function, pretrained_model_name_or_path):

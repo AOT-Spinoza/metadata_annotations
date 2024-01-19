@@ -27,10 +27,20 @@ def inference(config, models, transformations, clip_durations, classes, input_di
             framework = config.tasks[task_type][model_name].load_model.framework
             if framework == 'torch':
                 output_dict[task_type][model_name] = torch_inference.infer_videos(video_files, model, transformations[task_type][model_name], config, task_type, model_name)
-            if framework == 'torchhub':
+            elif framework == 'torchhub':
                 output_dict[task_type][model_name] = torchhub_inference.infer_videos_torchhub(video_files, model, transformations[task_type][model_name], clip_durations[task_type][model_name], classes[task_type][model_name], model_name)
-            if framework == 'pytorchvideo':
-                output_dict[task_type][model_name] = pytorchvideo_inference.infer_videos(video_files, model, transformations[task_type][model_name], clip_durations[task_type][model_name], classes[task_type][model_name], model_name)
-            if framework == 'huggingface':
+            elif framework == 'pytorchvideo':
+                if task_type == 'action_detection':
+                   # Check if there is any output under the key "object_detection"
+                    if "object_detection" in output_dict and any(output_dict["object_detection"].values()):
+                        # If there is, proceed with the inference
+                        
+                        object_detection_output = next(iter(output_dict["object_detection"].values()))  # get the output of any model
+                        output_dict[task_type][model_name] = pytorchvideo_inference.infer_videos(video_files, model, transformations[task_type][model_name], clip_durations[task_type][model_name], classes[task_type][model_name], model_name, object_detection_output)
+                    else:
+                        print("No output from object_detection. Cannot proceed with action_detection.") 
+                else:
+                    output_dict[task_type][model_name] = pytorchvideo_inference.infer_videos(video_files, model, transformations[task_type][model_name], clip_durations[task_type][model_name], classes[task_type][model_name], model_name)
+            elif framework == 'huggingface':
                 output_dict[task_type][model_name] = huggingface_inference.infer_videos_huggingface(video_files, model, transformations[task_type][model_name], model_name)
     return output_dict

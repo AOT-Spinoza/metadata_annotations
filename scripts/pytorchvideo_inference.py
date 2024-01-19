@@ -4,16 +4,17 @@ import torch
 import numpy as np
 import os
 from src.save_data import load_data_from_hdf5
-
-
+from src.tracker import tracking
+from src.postprocessing import threshold
 import os
 
-def get_person_bboxes(video_name):
+def get_person_bboxes(video_name, output_object_detection=None):
     """
     Get bounding boxes of detected persons in a video.
 
     Args:
         video_name (str): The name of the video.
+        output_object_detection (dict): Optional; The output from object detection.
 
     Returns:
         list: A list of dictionaries representing the bounding boxes of detected persons.
@@ -25,28 +26,46 @@ def get_person_bboxes(video_name):
     Raises:
         FileNotFoundError: If the HDF5 file containing the detection results does not exist.
     """
-    # Extract the base video name and remove the file extension
-    base_video_name = os.path.basename(video_name)
-    base_video_name_without_extension = os.path.splitext(base_video_name)[0]
-    
-    # Define the task map and model name
-    task_map = "object_detection"
-    model_name = "fasterrcnn_resnet50_fpn_v2"
+    if output_object_detection is not None:
+        print("Using output from object detection")
+        # Use output_object_detection to get the bounding boxes
+        # The exact code depends on the structure of output_object_detection
+        detection_data = output_object_detection[os.path.basename(video_name)]
+        print("detection_data correctly loaded")
+    else:
+        print("Searching for object detection output in results folder")
+        # Extract the base video name and remove the file extension
+        base_video_name = os.path.basename(video_name)
+        base_video_name_without_extension = os.path.splitext(base_video_name)[0]
+        
+        # Define the task map and model name
+        task_map = "object_detection"
+        model_name = "fasterrcnn_resnet50_fpn_v2"
 
-    # Construct the HDF5 file path
-    map_name = f"{task_map}/{model_name}"
-    print(map_name)
-    hdf5_file_name = f"./result/{base_video_name}/{map_name}/{base_video_name_without_extension}_{model_name}.hdf5"
+        # Construct the HDF5 file path
+        map_name = f"{task_map}/{model_name}"
+        hdf5_file_name = f"./result/{base_video_name}/{map_name}/{base_video_name_without_extension}_{model_name}.hdf5"
 
-    # Print the HDF5 file name for debugging purposes
-    print(hdf5_file_name)
+        # Check if the HDF5 file exists
+        if not os.path.exists(hdf5_file_name):
+            raise FileNotFoundError("No object detection found, make sure object detection is above the action detection in the config, or first do object detection on video")
 
-    # Check if the HDF5 file exists
-    if not os.path.exists(hdf5_file_name):
-        raise FileNotFoundError("First do object detection on video")
+        # Convert hdf5_file to a list of dictionaries using your custom function
+        detection_data = load_data_from_hdf5(hdf5_file_name)
 
-    # Convert hdf5_file to a list of dictionaries using your custom function
-    detection_data = load_data_from_hdf5(hdf5_file_name)
+    filtered_prediction = threshold(detection_data, 0.8)
+
+    detection_data = [
+        {
+            'boxes': frame['boxes'][frame['labels'] == 1],
+            'labels': frame['labels'][frame['labels'] == 1],
+            'scores': frame['scores'][frame['labels'] == 1],
+        }
+        for frame in filtered_prediction
+    ]
+
+    tracked_detection = tracking(filtered_prediction, None)
+    detection_data = tracked_detection
 
     # Check if any frame has label 1 (person), if not no action recognition is needed
     has_label_1 = any((frame['labels'] == 1).any() for frame in detection_data)
@@ -75,11 +94,11 @@ def get_frame_boxes(detection_data, frame_number):
 
     # Use the mask to select the boxes with a label of 1
     person_boxes = frame_data['boxes'][mask]
+    person_ids = frame_data['ids'][mask]
+    return person_boxes, person_ids
 
-    return person_boxes
 
-
-def infer_videos(video_files, model, transformation, clip_duration, classes, model_name):
+def infer_videos(video_files, model, transformation, clip_duration, classes, model_name, object_detection_output=None):
     """
     Infer actions in videos using a pre-trained model.
 
@@ -95,6 +114,7 @@ def infer_videos(video_files, model, transformation, clip_duration, classes, mod
         dict: Dictionary containing the inferred actions for each video and frame number.
 
     """
+
     # Check if CUDA is available and set the device accordingly
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.eval()
@@ -103,10 +123,10 @@ def infer_videos(video_files, model, transformation, clip_duration, classes, mod
     model = model.to(device)
     # Initialize the output dictionary
     outputs_all = {}
-
+    
     for video_path in tqdm(video_files, desc=f"Processing videos for {model_name}"):
         # Get the bounding boxes of detected persons in the video
-        detection_data = get_person_bboxes(video_path)
+        detection_data = get_person_bboxes(video_path, object_detection_output)
 
         ## TODO: Think of output method for exporting videos with no persons
         if detection_data is None:
@@ -117,21 +137,25 @@ def infer_videos(video_files, model, transformation, clip_duration, classes, mod
         # Load the video using EncodedVideo
         encoded_video = EncodedVideo.from_path(video_path)
         endbound = 2.6
-        time_stamp_range = np.arange(0, endbound, clip_duration)
+        time_stamp_range = np.arange(clip_duration/2, endbound - clip_duration/2, clip_duration)
         frame_rate = 60
+        total_frames_in_video = 150
+        outputs_all[os.path.basename(video_path)] = [None] * total_frames_in_video
 
         for time_stamp in time_stamp_range:
             print("Generating predictions for time stamp: {} sec".format(time_stamp))
-
+        
             # Generate clip around the designated time stamps
             inp_imgs = encoded_video.get_clip(
                 time_stamp - clip_duration/2.0,  # start second
                 time_stamp + clip_duration/2.0   # end second
             )
             inp_imgs = inp_imgs['video']
-
+        
+            # Calculate start_frame_number and middle_frame_number based on time_stamp and frame_rate
             start_frame_number = int((time_stamp - clip_duration/2.0) * frame_rate)
-            middle_frame_number = start_frame_number + inp_imgs.shape[1]//2
+            middle_frame_number = int(time_stamp * frame_rate)
+            end_frame_number = start_frame_number + inp_imgs.shape[1]
 
             # Generate people bbox predictions using Detectron2's off the shelf pre-trained predictor
             # We use the middle image in each clip to generate the bounding boxes.
@@ -139,11 +163,10 @@ def infer_videos(video_files, model, transformation, clip_duration, classes, mod
             inp_img = inp_img.permute(1, 2, 0)
 
             # Predicted boxes are of the form List[(x_1, y_1, x_2, y_2)]
-            predicted_boxes = get_frame_boxes(detection_data, middle_frame_number)
+            predicted_boxes, predicted_ids = get_frame_boxes(detection_data, middle_frame_number)
             if len(predicted_boxes) == 0:
                 print("Skipping clip, no frames detected at time stamp: ", time_stamp)
                 continue
-
             # Preprocess clip and bounding boxes for video action recognition.
             inputs, inp_boxes, _ = transformation(inp_imgs, predicted_boxes)
             # Prepend data sample id for each bounding box.
@@ -161,7 +184,6 @@ def infer_videos(video_files, model, transformation, clip_duration, classes, mod
             preds = preds.to('cpu')
             # The model is trained on AVA and AVA labels are 1 indexed, so prepend 0 to convert to 0 index.
             preds = torch.cat([torch.zeros(preds.shape[0], 1), preds], dim=1)
-
             # classes_dict = classes[0][0]
             # Get the class with the highest probability for each instance of a person
             max_probs, max_classes = torch.max(preds[:, 1:], dim=1)
@@ -171,10 +193,24 @@ def infer_videos(video_files, model, transformation, clip_duration, classes, mod
             # Use the indices of the max probabilities to get the class names
             class_names = [classes[i] for i in max_classes]
             # Store the results in the output dictionary
-            ## TODO: probably having to add the boxes as well for exporting later
+
             print(class_names)
-            outputs_all[os.path.basename(video_path)] = {middle_frame_number: {'max_probs': max_probs, 'max_classes': class_names}}
-            outputs_all[os.path.basename(video_path)] = {middle_frame_number: preds}
+            frame_output = {
+                'boxes': predicted_boxes,
+                'ids': predicted_ids,
+                'max_classes': class_names,
+                'max_probs': max_probs
+            }
+
+            # Assign the same output to all frames in the same clip as the middle frame
+            clip_duration_frames = int(clip_duration * frame_rate)
+            start_frame = max(0, middle_frame_number - clip_duration_frames // 2)
+            end_frame = min(150, middle_frame_number + clip_duration_frames // 2)
+            for frame_number in range(start_frame, end_frame):
+                outputs_all[os.path.basename(video_path)][frame_number] = frame_output
+                
 
     return outputs_all
+
+
 

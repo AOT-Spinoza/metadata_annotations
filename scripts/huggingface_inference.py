@@ -50,7 +50,6 @@ def infer_videos_huggingface(video_files, model, transformations, model_name):
     '''
     # Initialize the output dictionary
     outputs_all = {}
-    print(' jere')
     # Set the random seed for reproducibility
     seed = np.random.seed(40)
     
@@ -76,7 +75,7 @@ def infer_videos_huggingface(video_files, model, transformations, model_name):
         
         # Sample frame indices
         indices = sample_frame_indices(clip_len=num_frames, frame_sample_rate=20, seg_len=len(video_frames))   
-        
+        numpy_array = np.array(indices)
         # Convert the list of indexes to a PyTorch tensor
         indexes = torch.tensor(indices)
         
@@ -100,7 +99,7 @@ def infer_videos_huggingface(video_files, model, transformations, model_name):
         
         # Decode the generated IDs to get the output text
         output = transformations.batch_decode(generated_ids, skip_special_tokens=True)
-        print(output)
+
         # Add the output to the dictionary
         outputs_all[os.path.basename(video)] = output
         
