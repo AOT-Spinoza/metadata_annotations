@@ -3,7 +3,7 @@ import os
 import scripts.visualizer as visualizer
 import csv
 import numpy as np
-
+import pandas as pd
 
 import h5py
 
@@ -138,7 +138,20 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                                 writer = csv.writer(f)
                                 writer.writerow(['Caption'])
                                 writer.writerow([data])
+                 
 
+                        if model_name == "MiDaS":
+
+                            # Convert each tensor to a numpy array
+                            data_np = [frame.numpy() for frame in data]
+
+                            # Write to HDF5 file
+                            with h5py.File(os.path.join(task_dir, f"{video_name}_{model_name}.h5"), 'w') as f:
+                                for i, frame in enumerate(data_np):
+                                    # Create a dataset for each frame in the HDF5 file
+                                    f.create_dataset(f'frame_{i}', data=frame)
+                                    print(f'HDF5 exported to {task_dir}/{video_name}_{model_name}.h5')
+                            
                 if export_settings.get('video', False):
                     for video_name, data in model_data.items():
                         output_path = config['outputs']
@@ -147,7 +160,7 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                         os.makedirs(task_dir, exist_ok=True)
                         if model_name == "MiDaS":
                             # Save the segmentation as a video
-                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
+                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value)
                             print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
 
             if config['tasks'][task_type][model_name]["load_model"]['framework'] == "torch" or "pytorchvideo":

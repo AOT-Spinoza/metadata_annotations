@@ -85,6 +85,7 @@ def infer_videos_torchhub(video_files, model, transformation, clip_duration, cla
                 input_batch = transformation(frame).to(device)
                 with torch.no_grad():
                     prediction = model(input_batch).cpu()
+
                     #### ONLY FOR FFT
                     #prediction =prediction.unsqueeze(1)
 
@@ -95,8 +96,9 @@ def infer_videos_torchhub(video_files, model, transformation, clip_duration, cla
                          mode="bicubic",
                          align_corners=False,
                      )
+                    
                     outputs_all[os.path.basename(video)].append(prediction)
-
+            
 
     else:
         raise NotImplementedError("This model variant is not supported or implemented yet")

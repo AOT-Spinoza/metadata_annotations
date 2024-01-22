@@ -124,7 +124,7 @@ def create_semantic_masks(predictions, video_name, config, resize_value=None):
 
 
 
-def create_videos_from_frames(data, out_video_name, task_type,video_name, config, resize_value, classes):
+def create_videos_from_frames(data, out_video_name, task_type,video_name, config, resize_value, classes=None):
     """
     Create a video file from a list of frames.
 
@@ -153,8 +153,6 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
 
     if task_type == 'instance_segmentation':
         resized_frames, fps = get_video_data(video_name, config, resize_value)
-
-
         score_threshold = .75
         prob_threshold = .5
         boolean_masks = [
