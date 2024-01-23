@@ -144,11 +144,35 @@ def torchhub_transform(torchhub_model_variant, clip_duration):
     return transform, clip_duration
 
 def torch_transform(weights):
+    """
+    Apply transformations to weights using torch.
+
+    Args:
+        weights: The weights to be transformed.
+
+    Returns:
+        transformation: The transformed weights.
+        None: If an error occurs during transformation.
+    """
     weights = get_weight(weights)
-    transformation = weights.transforms(antialias=True)
+    # Models use different transormations functions or versions, to get rid of the warning about the antialias argument we do a try/except
+    try:
+        transformation = weights.transforms(antialias=True)
+    except TypeError:
+        transformation = weights.transforms()
     return transformation, None
 
 def huggingface_transform(processor_function, pretrained_model_name_or_path):
+    """
+    Applies a transformation using a Hugging Face processor.
+
+    Args:
+        processor_function (str): The name of the processor function to import.
+        pretrained_model_name_or_path (str): The name or path of the pretrained model.
+
+    Returns:
+        Tuple: A tuple containing the processor object and the clip duration.
+    """
     print(f"processor_function: {processor_function}")
     processor_function = import_from(processor_function)
     processor = processor_function(pretrained_model_name_or_path)

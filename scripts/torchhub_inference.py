@@ -71,33 +71,62 @@ def infer_videos_torchhub(video_files, model, transformation, clip_duration, cla
                 "pred_class": pred_class_names,
                 "pred_value": pred_values.tolist()
             }
+
     elif model_name == "MiDaS":
+        batch_size = 5  # Set your desired batch size
         for video in tqdm(video_files, desc=f"Processing videos for {model_name}"):
             video_reader = torchvision.io.VideoReader(video, "video")
             video_frames, _, pts, meta = custom_read_video(video_reader)
+            print(video_frames[0].shape)
             del video_reader
             gc.collect()
             # Load the desired clip
             outputs_all[os.path.basename(video)] = []
-            for frame_count, frame in enumerate(tqdm(video_frames, desc=f"Processing frames for {os.path.basename(video)}", leave=False), start=1):
+            for i in range(0, len(video_frames), batch_size):
+                batch_frames = video_frames[i:i+batch_size]
+                original_size = batch_frames[0].shape[-2:]
                 # Convert the tensor to a numpy array and move it to CPU
-                frame = frame.permute(1, 2, 0).cpu().numpy()
-                input_batch = transformation(frame).to(device)
+                batch_frames = [frame.permute(1, 2, 0).cpu().numpy() for frame in batch_frames]
+                input_batch = torch.stack([transformation(frame) for frame in batch_frames]).to(device)
+                # Flatten the batch dimension
+                input_batch = input_batch.view(-1, *input_batch.shape[2:])
                 with torch.no_grad():
                     prediction = model(input_batch).cpu()
+                    print(prediction.shape)
+                    #
+                    # prediction = prediction.view(prediction.shape[0], -1, *prediction.shape[2:])
+                    prediction = prediction.view(prediction.shape[0], 1, prediction.shape[1], -1)
+                    print(prediction.shape)
+                    outputs_all[os.path.basename(video)].extend(prediction)
 
-                    #### ONLY FOR FFT
-                    #prediction =prediction.unsqueeze(1)
 
-                    ## needs to go to postprocessing
-                    prediction = torch.nn.functional.interpolate(
-                         prediction.unsqueeze(1),
-                         size=video_frames.shape[-2:],
-                         mode="bicubic",
-                         align_corners=False,
-                     )
+    # elif model_name == "MiDaS":
+    #     for video in tqdm(video_files, desc=f"Processing videos for {model_name}"):
+    #         video_reader = torchvision.io.VideoReader(video, "video")
+    #         video_frames, _, pts, meta = custom_read_video(video_reader)
+    #         del video_reader
+    #         gc.collect()
+    #         # Load the desired clip
+    #         outputs_all[os.path.basename(video)] = []
+    #         for frame_count, frame in enumerate(tqdm(video_frames, desc=f"Processing frames for {os.path.basename(video)}", leave=False), start=1):
+    #             # Convert the tensor to a numpy array and move it to CPU
+    #             frame = frame.permute(1, 2, 0).cpu().numpy()
+    #             input_batch = transformation(frame).to(device)
+    #             with torch.no_grad():
+    #                 prediction = model(input_batch).cpu()
+
+    #                 #### ONLY FOR FFT
+    #                 #prediction =prediction.unsqueeze(1)
+
+    #                 ## needs to go to postprocessing
+    #                 prediction = torch.nn.functional.interpolate(
+    #                      prediction.unsqueeze(1),
+    #                      size=video_frames.shape[-2:],
+    #                      mode="bicubic",
+    #                      align_corners=False,
+    #                  )
                     
-                    outputs_all[os.path.basename(video)].append(prediction)
+    #                 outputs_all[os.path.basename(video)].append(prediction)
             
 
     else:

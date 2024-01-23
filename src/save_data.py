@@ -7,6 +7,8 @@ import pandas as pd
 
 import h5py
 
+
+
 def load_data_from_hdf5(filename):
     """
     Load the object detection output from an HDF5 file.
@@ -66,6 +68,7 @@ def save_segmentation_as_hdf5(segmentation, filename):
             frame_np = frame.numpy()
             # Create a dataset for each frame in the HDF5 file
             f.create_dataset(f'frame_{i}', data=frame_np)
+            print(f'HDF5 exported to {filename}')
 
 def keypoints_to_csv(data, output_filename):
     # Define the keypoints classes
@@ -139,18 +142,20 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                                 writer.writerow(['Caption'])
                                 writer.writerow([data])
                  
-
+                if export_settings.get('hdf5', False):
+                    for video_name, data in model_data.items():
+                        output_path = config['outputs']
+                        task_dir = os.path.join(output_path, video_name, task_type, model_name)
+                        os.makedirs(task_dir, exist_ok=True)
                         if model_name == "MiDaS":
-
                             # Convert each tensor to a numpy array
                             data_np = [frame.numpy() for frame in data]
-
+                            print(len(data_np))
                             # Write to HDF5 file
                             with h5py.File(os.path.join(task_dir, f"{video_name}_{model_name}.h5"), 'w') as f:
-                                for i, frame in enumerate(data_np):
-                                    # Create a dataset for each frame in the HDF5 file
-                                    f.create_dataset(f'frame_{i}', data=frame)
-                                    print(f'HDF5 exported to {task_dir}/{video_name}_{model_name}.h5')
+                                # Create a 3D dataset for all frames in the HDF5 file
+                                f.create_dataset('frames', data=data_np)
+                                print(f'HDF5 exported to {task_dir}/{video_name}_{model_name}.h5')
                             
                 if export_settings.get('video', False):
                     for video_name, data in model_data.items():
@@ -159,6 +164,7 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                         video_name = video_name.split('.')[0]
                         os.makedirs(task_dir, exist_ok=True)
                         if model_name == "MiDaS":
+                            
                             # Save the segmentation as a video
                             visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value)
                             print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')

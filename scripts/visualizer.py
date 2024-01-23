@@ -124,7 +124,7 @@ def create_semantic_masks(predictions, video_name, config, resize_value=None):
 
 
 
-def create_videos_from_frames(data, out_video_name, task_type,video_name, config, resize_value, classes=None):
+def create_videos_from_frames(data, out_video_name, task_type,video_name, config, resize_value=None, classes=None):
     """
     Create a video file from a list of frames.
 
@@ -139,10 +139,20 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
 
     # Create a VideoWriter object   
     if task_type == 'depth_estimation':
-        _, fps = get_video_data(video_name, config, resize_value)
+        original_frames, fps = get_video_data(video_name, config, resize_value)
+        print('original_frames', original_frames[0].shape)
+        original_size = original_frames[0].shape[-2:]
+        print('original_size', original_size)
         # Normalize the output to the range 0-255
         frames = []
         for output in data:
+            output = output.unsqueeze(1)
+            output = torch.nn.functional.interpolate(
+                        output,
+                        size=original_size,
+                        mode="bicubic",
+                        align_corners=False,)
+            
             output = (output - output.min()) / (output.max() - output.min()) * 255
             output = output.type(torch.uint8)
             # The output of MiDaS is a single-channel depth map, so we repeat it to create a 3-channel image
