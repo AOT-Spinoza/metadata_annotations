@@ -161,10 +161,9 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                     for video_name, data in model_data.items():
                         output_path = config['outputs']
                         task_dir = os.path.join(output_path, video_name, task_type, model_name)
-                        video_name = video_name.split('.')[0]
+                        video_name = os.path.splitext(video_name)[0]
                         os.makedirs(task_dir, exist_ok=True)
                         if model_name == "MiDaS":
-                            
                             # Save the segmentation as a video
                             visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value)
                             print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
@@ -176,9 +175,8 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                     # Create a directory for the model if it doesn't exist
                     output_path = config['outputs']
                     task_dir = os.path.join(output_path, video_name, task_type, model_name)
-                    video_name = video_name.split('.')[0]
+                    video_name = os.path.splitext(video_name)[0]
                     os.makedirs(task_dir, exist_ok=True)
-
                     # Get the export settings for the current task and model
                     export_settings = config['tasks'][task_type][model_name]['export']
                     
@@ -196,35 +194,48 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                     if task_type == 'keypoints':
                         # Check if CSV export is requested
                         if export_settings.get('csv', False):
-                            keypoints_to_csv(data, os.path.join(task_dir, f"{video_name}_{model_name}.csv"))
-                        if export_settings.get('video', False):
-                            # Save the segmentation as a video
-                            print('Creating video')
-                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
-                            print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
-                    if task_type == "instance_segmentation":
-                        # Check if video export is requested
-                        if export_settings.get('video', False):
-                            # Save the segmentation as a video
-                            print('Creating video')
-                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
-                            print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
+                            if data != None:
+                                keypoints_to_csv(data, os.path.join(task_dir, f"{video_name}_{model_name}.csv"))
+                            else:
+                                with open(os.path.join(task_dir, f"{video_name}_{model_name}.txt"), 'w') as f:
+                                    f.write("No persons tracked in video")
                         if export_settings.get('hdf5', False):
-                            # Save the segmentation to a CSV file 
-                            save_segmentation_as_hdf5(data, os.path.join(task_dir, f"{video_name}_{model_name}.hdf5")) 
-                    if task_type == "object_detection":
-                        # Check if video export is requested
+                            if data != None:
+                                save_detection_as_hdf5(data, os.path.join(task_dir, f"{video_name}_{model_name}.hdf5"))
+                            else:
+                                with open(os.path.join(task_dir, f"{video_name}_{model_name}.txt"), 'w') as f:
+                                    f.write("No persons tracked in video")
+                            
                         if export_settings.get('video', False):
-                            # Save the segmentation as a video
-                            print('Creating video')
-                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
-                            print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
-                        if export_settings.get('hdf5', False):
-                            save_detection_as_hdf5(data, os.path.join(task_dir, f"{video_name}_{model_name}.hdf5")) 
-                    if task_type == "action_detection":
-                        # Check if video export is requested
-                        if export_settings.get('video', False):
-                            # Save the action detection as a video
-                            print('Creating video')
-                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
-                            print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
+                            if data != None:
+                                # Save the segmentation as a video
+                                print('Creating video')
+                                video_name = os.path.splitext(video_name)[0]
+                                visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
+                                print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
+                if task_type == "instance_segmentation":
+                    # Check if video export is requested
+                    if export_settings.get('video', False):
+                        # Save the segmentation as a video
+                        print('Creating video')
+                        visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
+                        print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
+                    if export_settings.get('hdf5', False):
+                        # Save the segmentation to a CSV file 
+                        save_segmentation_as_hdf5(data, os.path.join(task_dir, f"{video_name}_{model_name}.hdf5")) 
+                if task_type == "object_detection":
+                    # Check if video export is requested
+                    if export_settings.get('video', False):
+                        # Save the segmentation as a video
+                        print('Creating video')
+                        visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
+                        print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
+                    if export_settings.get('hdf5', False):
+                        save_detection_as_hdf5(data, os.path.join(task_dir, f"{video_name}_{model_name}.hdf5")) 
+                if task_type == "action_detection":
+                    # Check if video export is requested
+                    if export_settings.get('video', False):
+                        # Save the action detection as a video
+                        print('Creating video')
+                        visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
+                        print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')

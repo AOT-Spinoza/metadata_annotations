@@ -4,7 +4,33 @@ from src.tracker import tracking
 import torch
 import numpy as np
 
-def threshold(predictions, threshold_value=0.75):
+def check_for_persons(predictions, config, video_name=None):
+    """
+    Checks if there are any persons detected in the predictions.
+
+    Args:
+        predictions (dict): A dictionary containing the predictions made by the model.
+
+    Returns:
+        bool: True if there are persons detected, False otherwise.
+    """
+    lower_limit = config['tasks']['keypoints']['KeypointRCNN_ResNet50']['lower_limit_persons']
+    frames_with_persons = 0
+    frames_with_no_persons = 0
+    for prediction in predictions:
+        if len(prediction['boxes']) > 0:
+            frames_with_persons += 1
+        else:
+            frames_with_no_persons += 1
+    print(frames_with_persons)        
+    if frames_with_persons >= lower_limit:
+        # if frames_with_persons > frames_with_no_persons:
+        #     print('manypersonsdetected')
+        return predictions
+    
+    return None
+
+def threshold(predictions, threshold_value=0.75, video_name=None):
     """
     Applies a threshold to the predictions of the Keypoint R-CNN model.
 
@@ -26,7 +52,7 @@ def threshold(predictions, threshold_value=0.75):
 
     return filtered_predictions
 
-def soft_max(predictions, config):
+def soft_max(predictions, config, video_name):
     """
     Applies the softmax function to the predictions of the semantic segmentation model.
 
@@ -80,6 +106,7 @@ def postprocess_predictions(predictions, config):
                 # Loop over each post-processing function
                 for postprocessing_func in postprocessing_func_names:
 
+
                     # Dynamically import the post-processing function
                     module_name, function_name = postprocessing_func.rsplit('.', 1)
                     module = importlib.import_module(module_name)
@@ -92,7 +119,8 @@ def postprocess_predictions(predictions, config):
                         postprocessed[task_type][model_name][video_name] = postprocessing_function(postprocessed[task_type][model_name][video_name], threshold_value)
                     else:
                         # For other functions, pass the prediction and the config as arguments
-                        postprocessed[task_type][model_name][video_name] = postprocessing_function(postprocessed[task_type][model_name][video_name], config)
+                        print(video_name)
+                        postprocessed[task_type][model_name][video_name] = postprocessing_function(postprocessed[task_type][model_name][video_name], config, video_name)
 
     # Return the post-processed predictions
     return postprocessed

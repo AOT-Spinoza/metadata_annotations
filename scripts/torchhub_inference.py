@@ -92,11 +92,11 @@ def infer_videos_torchhub(video_files, model, transformation, clip_duration, cla
                 input_batch = input_batch.view(-1, *input_batch.shape[2:])
                 with torch.no_grad():
                     prediction = model(input_batch).cpu()
-                    print(prediction.shape)
+ 
                     #
                     # prediction = prediction.view(prediction.shape[0], -1, *prediction.shape[2:])
                     prediction = prediction.view(prediction.shape[0], 1, prediction.shape[1], -1)
-                    print(prediction.shape)
+
                     outputs_all[os.path.basename(video)].extend(prediction)
 
 

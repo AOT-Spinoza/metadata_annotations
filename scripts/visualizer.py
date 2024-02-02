@@ -137,10 +137,11 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
         None
     """
 
+    print(out_video_name)
+
     # Create a VideoWriter object   
     if task_type == 'depth_estimation':
         original_frames, fps = get_video_data(video_name, config, resize_value)
-        print('original_frames', original_frames[0].shape)
         original_size = original_frames[0].shape[-2:]
         print('original_size', original_size)
         # Normalize the output to the range 0-255
@@ -182,24 +183,28 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
         id_to_color = {}
         video_frames, fps = get_video_data(video_name, config, resize_value)
         overdrawn_frames = []
+
         for frame, prediction in zip(video_frames, data):
+
             keypoints = prediction['keypoints']
             ids = prediction['ids']
+
             for i, id in enumerate(ids):
+                if i < len(keypoints):
+                    id = int(id)
                 # Convert keypoints to the expected format [num_instances, K, 2]
-                # Check if the unique ID is in the dictionary
-                if id not in id_to_color:
-                    # If it's not, generate a new color and add it to the dictionary
-                    id_to_color[id] = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-                # Get the color for the unique ID
-                color = id_to_color[id]
-                # Draw keypoints on the frame
-                keypoints_xy = keypoints[i][:, :2]  # Take only the first two columns (x, y)
-                keypoints_xy = keypoints_xy.unsqueeze(0)  # Add an extra dimension at the beginning
-                
-                ## frame will be a tensor of shape [C, H, W]
-                frame = torchvision.utils.draw_keypoints(frame, keypoints_xy, colors=color)
-            
+                    # Check if the unique ID is in the dictionary
+                    if id not in id_to_color.keys():
+                        # If it's not, generate a new color and add it to the dictionary
+                        id_to_color[id] = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+                    # Get the color for the unique ID
+                    color = id_to_color[id]
+                    # Draw keypoints on the frame
+                    keypoints_xy = keypoints[i][:, :2]  # Take only the first two columns (x, y)
+                    keypoints_xy = np.expand_dims(keypoints_xy, axis=0)  # Add an extra dimension at the beginning
+                    keypoints_xy = torch.from_numpy(keypoints_xy)  # Convert to a tensor
+                    ## frame will be a tensor of shape [C, H, W]
+                    frame = torchvision.utils.draw_keypoints(frame, keypoints_xy, colors=color)
             overdrawn_frames.append(frame)
         write_video(out_video_name, overdrawn_frames, fps)
     if task_type == 'object_detection':
