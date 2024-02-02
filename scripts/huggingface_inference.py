@@ -63,7 +63,7 @@ def infer_videos_huggingface(video_files, model, transformations, model_name):
         
         # Read the video frames using a custom function
         video_frames, _, pts, meta = custom_read_video(video_reader)
-        
+
         # Delete the VideoReader to free up memory
         del video_reader
         
