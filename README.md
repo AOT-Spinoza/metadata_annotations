@@ -96,12 +96,12 @@ Follow the comments and documentation within the config.yaml file for detailed c
 
 ## To Do:
 
-# The pipeline always finishes
+# The pipeline always finishes (resolved)
 The pipeline now stops when a model is not able to create predictions (action detection when no persons are present), this will be resolved asap.
 Because it will do predictions for all videos and models in inputs and the config first and then starts exporting all. 
 # Figuring out batch sizes to speed up computation:
 
-# Resolve warning about depreciated functions, 
+# Wwarning about depreciated functions, 
 Some functions are being removed in upcoming updates and can easily be changed, these are the waarningsd at the beginning when you run the script
 Some functions are just internally used and will be updated by packages themselves others are being called themselves in transformations.4
 
@@ -112,6 +112,9 @@ UserWarning: Accurate seek is not implemented for pyav backend
 /tank/tgn252/anaconda3/envs/metadata/lib/python3.9/site-packages/transformers/feature_extraction_utils.py:149: UserWarning: Creating a tensor from a list of numpy.ndarrays is extremely slow. Please consider converting the list to a single numpy.ndarray with numpy.array() before converting to a tensor. (Triggered internally at /opt/conda/conda-bld/pytorch_1695392022560/work/torch/csrc/utils/tensor_new.cpp:261.)
 
 
-# Tracker Issues
+# Tracker Issues (partly resolved Deepsort implemented)
 The tracker needs to be upgraded maybe to DEEPSORT, or the parameters need to be studied so it performs better. OR something else entirely. 
 Now it seems to track persons for example quite well but not overlay or hiding. which occurs quite often. Also ID numbers suddenly go from 1,2 to 13,2. But therefore the Sort needs to be studies better why it is doing that
+
+Deepsort is not part of the repo, there were also other issues witht the video making but the trakcing seems to be doing well, the ids are given correctly tho sometimes the error predictions from the object classifier is an issue. needs to be upgraded (yolo v7, candidate) 
+

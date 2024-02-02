@@ -210,7 +210,6 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                             if data != None:
                                 # Save the segmentation as a video
                                 print('Creating video')
-                                video_name = os.path.splitext(video_name)[0]
                                 visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
                                 print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
                 if task_type == "instance_segmentation":
