@@ -18,6 +18,34 @@ import torch.nn.functional as FF
 
 plt.rcParams["savefig.bbox"] = 'tight'
 
+
+import subprocess
+
+
+import os
+import subprocess
+from torchvision.utils import save_image
+
+def write_images_and_video(out_video_name, frames, fps):
+    # Get the directory name from out_video_name
+    out_dir = os.path.dirname(out_video_name)
+
+    # Save each frame as an image
+    image_paths = []
+    for i, frame in enumerate(frames):
+        # Normalize the frame to [0, 1]
+        frame = frame.float() / 255
+        image_path = os.path.join(out_dir, f'frame_{i:04d}.png')
+        save_image(frame, image_path)
+        image_paths.append(image_path)
+
+    # Use FFmpeg to convert the images into a video
+    subprocess.run(['ffmpeg', '-y', '-framerate', str(fps), '-i', os.path.join(out_dir, 'frame_%04d.png'), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '17', out_video_name])
+
+    # Remove the images
+    for image_path in image_paths:
+        os.remove(image_path)
+
 def get_video_data(video_name, config, resize_value=None):
     """
     Retrieves video frames and frames per second (fps) from a given video file.
@@ -160,7 +188,7 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
             output = output.squeeze(0).repeat(3, 1, 1)
             output = output.squeeze(1)
             frames.append(output)
-        write_video(out_video_name, frames, fps)
+        write_images_and_video(out_video_name, frames, fps)
 
     if task_type == 'instance_segmentation':
         resized_frames, fps = get_video_data(video_name, config, resize_value)
@@ -173,11 +201,11 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
             draw_segmentation_masks(img, mask.squeeze(1))
             for img, mask in zip(resized_frames, boolean_masks)
         ]
-        write_video(out_video_name, frames_with_masks, fps)
+        write_images_and_video(out_video_name, frames_with_masks, fps)
 
     if task_type == 'semantic_segmentation':
         video_masked, fps = create_semantic_masks(data,video_name, config, resize_value)	
-        write_video(out_video_name, video_masked, fps)
+        write_images_and_video(out_video_name, video_masked, fps)
     if task_type == 'keypoints':
         # Create a dictionary to store the colors for each unique ID
         id_to_color = {}
@@ -206,7 +234,7 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
                     ## frame will be a tensor of shape [C, H, W]
                     frame = torchvision.utils.draw_keypoints(frame, keypoints_xy, colors=color)
             overdrawn_frames.append(frame)
-        write_video(out_video_name, overdrawn_frames, fps)
+        write_images_and_video(out_video_name, overdrawn_frames, fps)
     if task_type == 'object_detection':
         video_frames, fps = get_video_data(video_name, config, resize_value)
         overdrawn_frames = []
@@ -216,9 +244,11 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
             boxes = prediction['boxes']
             labels = [classes[i] for i in prediction['labels']]  
             # Draw the bounding boxes on the frame
-            frame = torchvision.utils.draw_bounding_boxes(frame, boxes, labels, font="/tank/tgn252/metadata_annotations/library/GothamMedium.ttf", font_size=20, width=4)
+            if len(boxes) > 0:
+                boxes = torch.where(boxes < 0, torch.zeros_like(boxes), boxes)
+                frame = torchvision.utils.draw_bounding_boxes(frame, boxes, labels, font="/tank/tgn252/metadata_annotations/library/GothamMedium.ttf", font_size=20, width=4)          
             overdrawn_frames.append(frame)
-        write_video(out_video_name, overdrawn_frames, fps)
+        write_images_and_video(out_video_name, overdrawn_frames, fps)
 
     if task_type == 'action_detection':
         # Create a dictionary to store the colors for each unique ID
@@ -228,22 +258,33 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
         for frame_number, (frame, prediction) in enumerate(zip(video_frames, data)):
             if prediction is None:  # Skip the frame if the prediction is None
                 print(f"Empty prediction for frame number {frame_number}")
+                overdrawn_frames.append(frame)
                 continue
             
+
             # Get the bounding boxes, labels, and IDs from the prediction
             boxes = prediction['boxes']
+            if len(boxes) == 0:
+                overdrawn_frames.append(frame)
+                continue
             labels =  prediction['max_classes']
             ids = prediction['ids']
-            # Draw the bounding boxes on the frame with colors based on IDs
-            for i, id in enumerate(ids):
+
+            # Prepare a list for colors
+            colors_list = []
+
+            for id in ids:
+                id = int(id.item())  # Convert tensor to int
                 # Check if the unique ID is in the dictionary
                 if id not in id_to_color:
                     # If it's not, generate a new color and add it to the dictionary
                     id_to_color[id] = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
                 # Get the color for the unique ID
                 color = id_to_color[id]
-                # Draw the bounding box with the color
-                frame = torchvision.utils.draw_bounding_boxes(frame, boxes[i].unsqueeze(0), [labels[i]], colors=color, font="/tank/tgn252/metadata_annotations/library/GothamMedium.ttf", font_size=20, width=4)
-
+                # Add the color to the list
+                colors_list.append(color)
+            
+            # Draw all the bounding boxes at once
+            frame = torchvision.utils.draw_bounding_boxes(frame, boxes, labels=labels, colors=colors_list, font="/tank/tgn252/metadata_annotations/library/GothamMedium.ttf", font_size=20, width=4)
             overdrawn_frames.append(frame)
-        write_video(out_video_name, overdrawn_frames, fps)
+        write_images_and_video(out_video_name, overdrawn_frames, fps)

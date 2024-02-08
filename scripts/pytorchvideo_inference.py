@@ -4,11 +4,11 @@ import torch
 import numpy as np
 import os
 from src.save_data import load_data_from_hdf5
-from src.tracker import tracking
+from src.tracker import tracking_deepsort
 from src.postprocessing import threshold
 import os
 
-def get_person_bboxes(video_name, output_object_detection=None):
+def get_person_bboxes(config, video_name, output_object_detection=None):
     """
     Get bounding boxes of detected persons in a video.
 
@@ -64,15 +64,16 @@ def get_person_bboxes(video_name, output_object_detection=None):
         for frame in filtered_prediction
     ]
 
-    tracked_detection = tracking(filtered_prediction, None)
+    tracked_detection = tracking_deepsort(filtered_prediction, config, video_name)
     detection_data = tracked_detection
+
 
     # Check if any frame has label 1 (person), if not no action recognition is needed
     has_label_1 = any((frame['labels'] == 1).any() for frame in detection_data)
     if not has_label_1:
         print("No person detected in video")
         return None
-
+    print(len(detection_data))
     return detection_data
     
     
@@ -87,6 +88,7 @@ def get_frame_boxes(detection_data, frame_number):
     Returns:
     person_boxes (list): A list of bounding boxes for people in the specified frame.
     """
+    print(len(detection_data))
     # Get the bounding boxes for the frame number
     frame_data = detection_data[frame_number]
     # Create a boolean mask where True corresponds to a label of 1
@@ -98,7 +100,7 @@ def get_frame_boxes(detection_data, frame_number):
     return person_boxes, person_ids
 
 
-def infer_videos(video_files, model, transformation, clip_duration, classes, model_name, object_detection_output=None):
+def infer_videos(config, video_files, model, transformation, clip_duration, classes, model_name, object_detection_output=None):
     """
     Infer actions in videos using a pre-trained model.
 
@@ -126,20 +128,23 @@ def infer_videos(video_files, model, transformation, clip_duration, classes, mod
     
     for video_path in tqdm(video_files, desc=f"Processing videos for {model_name}"):
         # Get the bounding boxes of detected persons in the video
-        detection_data = get_person_bboxes(video_path, object_detection_output)
+        detection_data = get_person_bboxes(config, video_path, object_detection_output)
+        print(video_path)
 
         ## TODO: Think of output method for exporting videos with no persons
         if detection_data is None:
             print("Skipping video, no person detected")
-            outputs_all[os.path.basename(video_path)] = {}
+            outputs_all[os.path.basename(video_path)] = None
             continue
-
+        len(detection_data)
         # Load the video using EncodedVideo
         encoded_video = EncodedVideo.from_path(video_path)
         endbound = 2.6
         time_stamp_range = np.arange(clip_duration/2, endbound - clip_duration/2, clip_duration)
         frame_rate = 60
+
         total_frames_in_video = 150
+
         outputs_all[os.path.basename(video_path)] = [None] * total_frames_in_video
 
         for time_stamp in time_stamp_range:
@@ -164,45 +169,51 @@ def infer_videos(video_files, model, transformation, clip_duration, classes, mod
 
             # Predicted boxes are of the form List[(x_1, y_1, x_2, y_2)]
             predicted_boxes, predicted_ids = get_frame_boxes(detection_data, middle_frame_number)
-            if len(predicted_boxes) == 0:
-                print("Skipping clip, no frames detected at time stamp: ", time_stamp)
-                continue
-            # Preprocess clip and bounding boxes for video action recognition.
-            inputs, inp_boxes, _ = transformation(inp_imgs, predicted_boxes)
-            # Prepend data sample id for each bounding box.
-            # For more details, refer to the RoIAlign in Detectron2
-            inp_boxes = torch.cat([torch.zeros(inp_boxes.shape[0], 1), inp_boxes], dim=1)
+            if len(predicted_boxes) != 0:
+                print(type(predicted_boxes))
+                predicted_boxes = predicted_boxes.to(torch.float64)
+                # Preprocess clip and bounding boxes for video action recognition.
+                inputs, inp_boxes, _ = transformation(inp_imgs, predicted_boxes)
+                # Prepend data sample id for each bounding box.
+                # For more details, refer to the RoIAlign in Detectron2
+                inp_boxes = torch.cat([torch.zeros(inp_boxes.shape[0], 1), inp_boxes], dim=1)
 
-            # Generate action predictions for the bounding boxes in the clip.
-            # The model here takes in the pre-processed video clip and the detected bounding boxes.
-            if isinstance(inputs, list):
-                inputs = [inp.unsqueeze(0).to(device) for inp in inputs]
+                # Generate action predictions for the bounding boxes in the clip.
+                # The model here takes in the pre-processed video clip and the detected bounding boxes.
+                if isinstance(inputs, list):
+                    inputs = [inp.unsqueeze(0).to(device) for inp in inputs]
+                else:
+                    inputs = inputs.unsqueeze(0).to(device)
+                preds = model(inputs, inp_boxes.float().to(device))
+
+                preds = preds.to('cpu')
+                # The model is trained on AVA and AVA labels are 1 indexed, so prepend 0 to convert to 0 index.
+                preds = torch.cat([torch.zeros(preds.shape[0], 1), preds], dim=1)
+                # classes_dict = classes[0][0]
+                # Get the class with the highest probability for each instance of a person
+                max_probs, max_classes = torch.max(preds[:, 1:], dim=1)
+                max_probs = max_probs.tolist()
+                max_classes = max_classes.tolist()
+                max_classes = [i+1 for i in max_classes]
+                # Use the indices of the max probabilities to get the class names
+                class_names = [classes[i] for i in max_classes]
+                # Store the results in the output dictionary
+
+
+                frame_output = {
+                    'boxes': predicted_boxes,
+                    'ids': predicted_ids,
+                    'max_classes': class_names,
+                    'max_probs': max_probs
+                }
             else:
-                inputs = inputs.unsqueeze(0).to(device)
-            preds = model(inputs, inp_boxes.float().to(device))
-
-            preds = preds.to('cpu')
-            # The model is trained on AVA and AVA labels are 1 indexed, so prepend 0 to convert to 0 index.
-            preds = torch.cat([torch.zeros(preds.shape[0], 1), preds], dim=1)
-            # classes_dict = classes[0][0]
-            # Get the class with the highest probability for each instance of a person
-            max_probs, max_classes = torch.max(preds[:, 1:], dim=1)
-            max_probs = max_probs.tolist()
-            max_classes = max_classes.tolist()
-            max_classes = [i+1 for i in max_classes]
-            # Use the indices of the max probabilities to get the class names
-            class_names = [classes[i] for i in max_classes]
-            # Store the results in the output dictionary
-
-            print(class_names)
-            frame_output = {
-                'boxes': predicted_boxes,
-                'ids': predicted_ids,
-                'max_classes': class_names,
-                'max_probs': max_probs
-            }
-
-            # Assign the same output to all frames in the same clip as the middle frame
+                 frame_output = {
+                    'boxes': [],
+                    'ids': [],
+                    'max_classes': [],
+                    'max_probs': []
+                }
+                            # Assign the same output to all frames in the same clip as the middle frame
             clip_duration_frames = int(clip_duration * frame_rate)
             start_frame = max(0, middle_frame_number - clip_duration_frames // 2)
             end_frame = min(150, middle_frame_number + clip_duration_frames // 2)

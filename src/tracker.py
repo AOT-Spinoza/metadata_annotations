@@ -74,9 +74,11 @@ def tracking_deepsort(predictions, config, video_name):
     all_tracking_results = []
     count = 0
     for frame, prediction in zip(frames, predictions):
+
         count+=1
         deepsort_bboxes, deepsort_confidences, deepsort_class_ids = format_for_deepsort(prediction, threshold=0.75)
         deepsort_classes = [class_map[class_id] for class_id in deepsort_class_ids]
+
         if len(deepsort_bboxes) == 0:
             # If there are no objects to track, append a dictionary with the same keys as the original prediction but with empty tensors as values
             all_tracking_results.append({**{key: torch.tensor([]) for key in prediction.keys()}, 'ids': torch.tensor([])})
@@ -116,6 +118,9 @@ def tracking_deepsort(predictions, config, video_name):
             if len(buffer) > buffer_size:
                 _, tracked_prediction = buffer.pop(0)
                 all_tracking_results.append(tracked_prediction)
+        else:
+            # If there are no objects to track, append a dictionary with the same keys as the original prediction but with empty tensors as values
+            all_tracking_results.append({**{key: torch.tensor([]) for key in prediction.keys()}, 'ids': torch.tensor([])})
 
     # After all frames have been processed, add the remaining frames in the buffer to all_tracking_results
     for _, tracked_prediction in buffer:
