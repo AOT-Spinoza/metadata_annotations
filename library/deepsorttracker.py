@@ -34,7 +34,5 @@ class DeepSortTracker:
             identities = outputs[:, -2]
             object_id = outputs[:, -1]
             tracking_results = [bbox_xyxy, identities, object_id]
-        else:
-            print("no outputs")
 
         return tracking_results
