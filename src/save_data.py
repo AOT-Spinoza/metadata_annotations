@@ -4,6 +4,7 @@ import scripts.visualizer as visualizer
 import csv
 import numpy as np
 import pandas as pd
+import torch
 
 import h5py
 
@@ -41,24 +42,101 @@ def save_detection_as_hdf5(data, filename):
     """
 
     for frame in data:
+        if frame != None:
+            for key, value in frame.items():
+                try:
+                    frame[key] = value.detach().numpy()
+                except:
+                    frame[key] = value
+
+    with h5py.File(filename, 'w') as f:
+        for i, d in enumerate(data):
+            grp = f.create_group(str(i))
+            try:
+                for key, value in d.items():
+                    grp.create_dataset(key, data=value, compression="gzip", compression_opts=9)
+            except AttributeError:
+                # Create an empty dataset for frames with no detections
+                grp.create_dataset("empty", data=np.array([]), compression="gzip", compression_opts=9)
+
+def save_instance_segmentation_as_hdf5(data, filename):
+    """
+    Save the instance segmentation output as an HDF5 file.
+
+    Args:
+        segmentation (list): A list of dictionaries representing the segmentation maps for each frame.
+        filename (str): The name of the HDF5 file to save.
+    """
+    for frame in data:
         for key, value in frame.items():
             try:
                 frame[key] = value.detach().numpy()
             except:
                 frame[key] = value
-    
     # Write to HDF5 file
     with h5py.File(filename, 'w') as f:
         for i, d in enumerate(data):
             grp = f.create_group(str(i))
             for key, value in d.items():
-                grp.create_dataset(key, data=value)
+                grp.create_dataset(key, data=value, compression="gzip", compression_opts=9)
+
+
+
+
+
+
+def save_instance_segmentation_as_hdf5_memory(data, filename):
+    """
+    Save the instance segmentation output as an HDF5 file.
+
+    Args:
+        data (list): A list of dictionaries representing the segmentation maps for each frame.
+        filename (str): The name of HDF5 file save.
+    """
+    
+        
+    with h5py.File(filename, 'w') as f:
+        # Initialize height and width
+        height, width = None, None
+
+        # Find the first non-empty 'masks' to get the height and width
+        for frame in data[2:]:
+            try:
+                height, width = frame['masks'][0].shape[1:]
+                break
+            except:
+                continue
+        if height == None or width == None:
+            print('No masks found in frames')
+            return
+        for i, frame in enumerate(data[2:], start=2):  # Start from the third frame
+            # Initialize an empty 2D array for the instance map
+
+            instance_map = np.zeros((height, width), dtype=np.uint16)
+
+            # Initialize an empty dictionary for the instance labels
+            instance_labels = {}
+
+            for mask, label, id in zip(frame['masks'], frame['labels'], frame['ids']):
+                # Convert the probability mask to a boolean mask
+                bool_mask = mask[0] > 0.5
+
+                # Assign the instance ID to the pixels in the mask
+                instance_map[bool_mask] = id
+
+                # Map the instance ID to the label
+                instance_labels[id] = label.item()
+
+            # Save the instance map and the instance labels for this frame
+            grp = f.create_group(str(i))
+            grp.create_dataset('instance_map', data=instance_map, compression="gzip", compression_opts=9)
+            grp.create_dataset('instance_labels', data=np.array(list(instance_labels.items()), dtype=np.uint16), compression="gzip", compression_opts=9)
+            grp.attrs['frame_number'] = i  # Store the frame number as an attribute
 
 def save_segmentation_as_hdf5(segmentation, filename):
     """
     Save the semantic segmentation output as an HDF5 file.
-    This is done on the data with all probabilities per class on a pixel, 
-    maybe we need to decide to first argmax for the dominant class so we just have per pixel what class it belongs to.
+    This version applies argmax to each frame before saving, reducing the data size.
 
     Args:
         segmentation (list): A list of tensors representing the segmentation maps for each frame.
@@ -67,11 +145,11 @@ def save_segmentation_as_hdf5(segmentation, filename):
 
     with h5py.File(filename, 'w') as f:
         for i, frame in enumerate(segmentation):
-            # Convert the tensor to numpy array
-            frame_np = frame.numpy()
-            # Create a dataset for each frame in the HDF5 file
-            f.create_dataset(f'frame_{i}', data=frame_np)
-            print(f'HDF5 exported to {filename}')
+            # Apply argmax to the frame to get the class with the highest probability for each pixel
+            frame_argmax = torch.argmax(frame, dim=0).numpy()
+            # Save the frame to the HDF5 file
+            f.create_dataset(f'frame_{i}', data=frame_argmax, compression="gzip", compression_opts=9)
+        print(f'HDF5 exported to {filename}')
 
 def keypoints_to_csv(data, output_filename):
     # Define the keypoints classes
@@ -139,11 +217,14 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                                 writer = csv.DictWriter(f, fieldnames=['pred_class', 'pred_value'])
                                 writer.writeheader()
                                 writer.writerow(data)
+                            print(f'CSV exported to {task_dir}/{video_name}_{model_name}.csv')
                         if model_name == "GIT":
                             with open(os.path.join(task_dir, f"{video_name}_{model_name}.csv"), 'w', newline='') as f:
                                 writer = csv.writer(f)
                                 writer.writerow(['Caption'])
-                                writer.writerow([data])
+                                writer.writerow([data['caption']])
+                            print(f'CSV exported to {task_dir}/{video_name}_{model_name}.csv')
+                              
                  
                 if export_settings.get('hdf5', False):
                     for video_name, data in model_data.items():
@@ -153,11 +234,10 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                         if model_name == "MiDaS":
                             # Convert each tensor to a numpy array
                             data_np = [frame.numpy() for frame in data]
-                            print(len(data_np))
                             # Write to HDF5 file
                             with h5py.File(os.path.join(task_dir, f"{video_name}_{model_name}.hdf5"), 'w') as f:
                                 # Create a 3D dataset for all frames in the HDF5 file
-                                f.create_dataset('frames', data=data_np)
+                                f.create_dataset('frames', data=data_np, compression="gzip", compression_opts=9)
                                 print(f'HDF5 exported to {task_dir}/{video_name}_{model_name}.hdf5')
                             
                 if export_settings.get('video', False):
@@ -167,7 +247,7 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                         video_name = os.path.splitext(video_name)[0]
                         os.makedirs(task_dir, exist_ok=True)
                         if model_name == "MiDaS":
-                            # Save the segmentation as a video
+                            # Save the depth map as a video
                             visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value)
                             print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
 
@@ -194,6 +274,9 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                             # Save the segmentation as a video
                             visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
                             print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
+                        if export_settings.get('hdf5', False):
+                            # Save the segmentation to a CSV file 
+                            save_segmentation_as_hdf5(data, os.path.join(task_dir, f"{video_name}_{model_name}.hdf5"))
                     if task_type == 'keypoints':
                         if data != None:
                             # Check if CSV export is requested
@@ -214,11 +297,15 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                         if export_settings.get('video', False):
                             # Save the segmentation as a video
                             print('Creating video')
-                            visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
-                            print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
+                            x = visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value, classes)
+                            if x ==1:
+                                print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
+                            else:
+                                print(f'No video exported')
                         if export_settings.get('hdf5', False):
                             # Save the segmentation to a CSV file 
-                            save_segmentation_as_hdf5(data, os.path.join(task_dir, f"{video_name}_{model_name}.hdf5")) 
+                            save_instance_segmentation_as_hdf5_memory(data, os.path.join(task_dir, f"{video_name}_{model_name}.hdf5")) 
+                            print(f'HDF5 exported to {task_dir}/{video_name}_{model_name}.hdf5')
                     if task_type == "object_detection":
                         if data != None:
                             # Check if video export is requested

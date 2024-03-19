@@ -11,6 +11,24 @@ import os
 
 import os
 
+def get_dirs_with_subdir(dirs, subdir_name):
+    """
+    Returns a dictionary where the keys are directory names and the values are True if the directory contains a subdirectory with the given name, and False otherwise.
+
+    Args:
+        dirs (list): List of directory paths.
+        subdir_name (str): Name of the subdirectory to check for.
+
+    Returns:
+        dict: Dictionary where the keys are directory names and the values are True if the directory contains a subdirectory with the given name, and False otherwise.
+    """
+    dirs_with_subdir = {}
+    for d in dirs:
+        subdirs = os.listdir(d)
+        dirs_with_subdir[d] = subdir_name in subdirs
+    true_dirs = [keys for keys, values in dirs_with_subdir.items() if values]
+    return true_dirs
+
 def check_missing_counterparts(video_files, output_dir, n):
     """
     Checks for each video if its reversed counterpart exists and removes them from the list.
@@ -65,20 +83,25 @@ def get_unused_video_files(video_files, output_dir, number_video):
         unused_video_files = [f for f in selected_video_files if os.path.basename(f) not in existing_dirs]
         return unused_video_files
 
-def get_video_dirs_without_subdirs(video_dirs, subdirs, number_video):
+def get_video_dirs_without_subdir(video_dirs, subdir, number_video):
     """
-    Filters the video directories to include only those that do not contain any of the specified subdirectories.
+    Filters the video directories to include only those that do not contain the specified subdirectory.
 
     Args:
         video_dirs (list): List of video directory paths.
-        subdirs (list): List of subdirectory names to check for.
+        subdir (str): Name of the subdirectory to check for.
         number_video (int): Number of video directories to select.
 
     Returns:
-        list: List of video directory paths that do not contain any of the specified subdirectories.
+        list: List of video directory paths that do not contain the specified subdirectory.
     """
-    video_dirs_without_subdirs = [d for d in video_dirs if not any(subdir in os.listdir(d) for subdir in subdirs)]
-    selected_video_dirs = random.sample(video_dirs_without_subdirs, number_video)
+    video_dirs_without_subdir = [d for d in video_dirs if subdir not in os.listdir(d)]
+    
+    if number_video > len(video_dirs_without_subdir):
+        print(f"Requested {number_video} videos, but only found {len(video_dirs_without_subdir)}. Returning all available videos.")
+        return video_dirs_without_subdir
+
+    selected_video_dirs = random.sample(video_dirs_without_subdir, number_video)
     return selected_video_dirs
 
 
@@ -122,26 +145,8 @@ def inference(config, models, transformations, clip_durations, classes, input_di
         dict: Dictionary containing the output of each model's inference for each video file.
     """
     ## Get a list of all video files in the input directory
-    video_files = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.endswith('.mp4')]  # adjust the condition based on your video file format
+    video_files =input_dir
     
-    ## FILTERING OPTIONS now you have to comment out which you want to do but will become ppart of confg later on, also you can give the number of videos you want to process
-
-    ## OPTION 1 Filter the selected video files to include only those that are not already names of directories under the output directory, so that we don't process the same video twice
-    # video_files = get_unused_video_files(video_files, config['outputs'], 20)
-
-    ## OPTION 2 Check for each video if its reversed time counterpart exists
-    # Get a list of all video directories in the output directory
-    # output_dir = config['outputs']
-    # video_dirs = [os.path.join(output_dir, d) for d in os.listdir(output_dir) if os.path.isdir(os.path.join(output_dir, d))]
-    # video_files = check_missing_counterparts(video_files, video_dirs, 150)
-
-    ## OPTION 3 Filter the selected video directories to include only those that do not contain the a subdirectory (task)
-    output_dir = config['outputs']
-    video_dirs = [os.path.join(output_dir, d) for d in os.listdir(output_dir) if os.path.isdir(os.path.join(output_dir, d))]
-    video_dirs = get_video_dirs_without_subdirs(video_dirs, ['action_detection'], 20)
-    video_files = [d.replace(output_dir, input_dir) for d in video_dirs]
-
-    print(len(video_files), "video files to process")
     output_dict = {}
     for task_type, task_models in models.items():
         output_dict[task_type] = {}
@@ -155,8 +160,6 @@ def inference(config, models, transformations, clip_durations, classes, input_di
                 if task_type == 'action_detection':
                    # Check if there is any output under the key "object_detection"
                     if "object_detection" in output_dict and any(output_dict["object_detection"].values()):
-                        # If there is, proceed with the inference
-                        
                         object_detection_output = next(iter(output_dict["object_detection"].values()))  # get the output of any model
                         output_dict[task_type][model_name] = pytorchvideo_inference.infer_videos(config, video_files, model, transformations[task_type][model_name], clip_durations[task_type][model_name], classes[task_type][model_name], model_name, object_detection_output)
                     else:

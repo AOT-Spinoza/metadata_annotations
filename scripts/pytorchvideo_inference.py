@@ -7,6 +7,8 @@ from src.save_data import load_data_from_hdf5
 from src.tracker import tracking_deepsort
 from src.postprocessing import threshold
 import os
+import av
+import gc
 
 def get_person_bboxes(config, video_name, output_object_detection=None):
     """
@@ -27,13 +29,10 @@ def get_person_bboxes(config, video_name, output_object_detection=None):
         FileNotFoundError: If the HDF5 file containing the detection results does not exist.
     """
     if output_object_detection is not None:
-        print("Using output from object detection")
         # Use output_object_detection to get the bounding boxes
         # The exact code depends on the structure of output_object_detection
         detection_data = output_object_detection[os.path.basename(video_name)]
-        print("detection_data correctly loaded")
     else:
-        print("Searching for object detection output in results folder")
         # Extract the base video name and remove the file extension
         base_video_name = os.path.basename(video_name)
         base_video_name_without_extension = os.path.splitext(base_video_name)[0]
@@ -54,7 +53,7 @@ def get_person_bboxes(config, video_name, output_object_detection=None):
         detection_data = load_data_from_hdf5(hdf5_file_name)
 
     filtered_prediction = threshold(detection_data, 0.8)
-
+    
     detection_data = [
         {
             'boxes': frame['boxes'][frame['labels'] == 1],
@@ -66,14 +65,14 @@ def get_person_bboxes(config, video_name, output_object_detection=None):
 
     tracked_detection = tracking_deepsort(filtered_prediction, config, video_name)
     detection_data = tracked_detection
-
+    number_frames = len(detection_data)
 
     # Check if any frame has label 1 (person), if not no action recognition is needed
     has_label_1 = any((frame['labels'] == 1).any() for frame in detection_data)
     if not has_label_1:
         print("No person detected in video")
         return None
-    print(len(detection_data))
+
     return detection_data
     
     
@@ -88,7 +87,7 @@ def get_frame_boxes(detection_data, frame_number):
     Returns:
     person_boxes (list): A list of bounding boxes for people in the specified frame.
     """
-    print(len(detection_data))
+
     # Get the bounding boxes for the frame number
     frame_data = detection_data[frame_number]
     # Create a boolean mask where True corresponds to a label of 1
@@ -120,7 +119,6 @@ def infer_videos(config, video_files, model, transformation, clip_duration, clas
     # Check if CUDA is available and set the device accordingly
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = model.eval()
-    print(f"Using device: {device}")
     # Move the model to the device
     model = model.to(device)
     # Initialize the output dictionary
@@ -129,26 +127,34 @@ def infer_videos(config, video_files, model, transformation, clip_duration, clas
     for video_path in tqdm(video_files, desc=f"Processing videos for {model_name}"):
         # Get the bounding boxes of detected persons in the video
         detection_data = get_person_bboxes(config, video_path, object_detection_output)
-        print(video_path)
 
         ## TODO: Think of output method for exporting videos with no persons
         if detection_data is None:
             print("Skipping video, no person detected")
             outputs_all[os.path.basename(video_path)] = None
             continue
-        len(detection_data)
         # Load the video using EncodedVideo
         encoded_video = EncodedVideo.from_path(video_path)
+        container = av.open(video_path)
+
+        try:
+            # Get the video stream
+            video_stream = next(s for s in container.streams if s.type == 'video')
+
+            # Get the frame rate and number of frames
+            frame_rate = video_stream.average_rate
+            total_frames_in_video = video_stream.frames
+
+        finally:
+            # Close the container
+            container.close()    
+
         endbound = 2.6
         time_stamp_range = np.arange(clip_duration/2, endbound - clip_duration/2, clip_duration)
-        frame_rate = 60
-
-        total_frames_in_video = 150
 
         outputs_all[os.path.basename(video_path)] = [None] * total_frames_in_video
 
         for time_stamp in time_stamp_range:
-            print("Generating predictions for time stamp: {} sec".format(time_stamp))
         
             # Generate clip around the designated time stamps
             inp_imgs = encoded_video.get_clip(
@@ -170,7 +176,7 @@ def infer_videos(config, video_files, model, transformation, clip_duration, clas
             # Predicted boxes are of the form List[(x_1, y_1, x_2, y_2)]
             predicted_boxes, predicted_ids = get_frame_boxes(detection_data, middle_frame_number)
             if len(predicted_boxes) != 0:
-                print(type(predicted_boxes))
+
                 predicted_boxes = predicted_boxes.to(torch.float64)
                 # Preprocess clip and bounding boxes for video action recognition.
                 inputs, inp_boxes, _ = transformation(inp_imgs, predicted_boxes)
@@ -219,6 +225,10 @@ def infer_videos(config, video_files, model, transformation, clip_duration, clas
             end_frame = min(150, middle_frame_number + clip_duration_frames // 2)
             for frame_number in range(start_frame, end_frame):
                 outputs_all[os.path.basename(video_path)][frame_number] = frame_output
+            
+
+            torch.cuda.empty_cache()
+            gc.collect()
                 
 
     return outputs_all

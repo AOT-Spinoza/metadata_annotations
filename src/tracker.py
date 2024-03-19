@@ -5,6 +5,8 @@ from library.deepsorttracker import DeepSortTracker
 from scripts.visualizer import get_video_data
 import cv2
 import os
+from torchvision.ops import box_iou
+
 
 def get_frames_from_video(video_path):
     # Open the video file
@@ -63,9 +65,9 @@ def format_for_deepsort(detection, threshold=0.8):
 
 def tracking_deepsort(predictions, config, video_name):
     if predictions is None:
-        print('no persons detected, returning None')
+        print('no trackable objects detected, returning None')
         return None
-    class_map = ['__background__', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'N/A', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'N/A', 'backpack', 'umbrella', 'N/A', 'N/A', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'bottle', 'N/A', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed', 'N/A', 'dining table', 'N/A', 'N/A', 'toilet', 'N/A', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'N/A', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush']
+    
     buffer = []
     buffer_size = 5
     tracker = DeepSortTracker("./library/deep_sort_pytorch/configs/deep_sort.yaml")
@@ -74,10 +76,11 @@ def tracking_deepsort(predictions, config, video_name):
     all_tracking_results = []
     count = 0
     for frame, prediction in zip(frames, predictions):
+        
 
         count+=1
         deepsort_bboxes, deepsort_confidences, deepsort_class_ids = format_for_deepsort(prediction, threshold=0.75)
-        deepsort_classes = [class_map[class_id] for class_id in deepsort_class_ids]
+        
 
         if len(deepsort_bboxes) == 0:
             # If there are no objects to track, append a dictionary with the same keys as the original prediction but with empty tensors as values
@@ -108,8 +111,12 @@ def tracking_deepsort(predictions, config, video_name):
                 elif key == 'labels':
                     tracked_prediction[key] = torch.from_numpy(tracking_results[:, 5].astype(int))  # The 6th column is the class ID
                 else:
-                    # For all other keys, just copy the values from the original prediction
-                    tracked_prediction[key] = torch.tensor(prediction[key])
+                    # Calculate IoU between tracked boxes and original boxes
+                    iou = box_iou(torch.from_numpy(tracking_results[:, :4]), prediction['boxes'])
+                    # Find the index of the original box with the highest IoU for each tracked box
+                    indices = torch.argmax(iou, dim=1)
+                    # Only include the values corresponding to the tracked objects
+                    tracked_prediction[key] = prediction[key][indices]
 
             # Add the track IDs as a new key
             tracked_prediction['ids'] = torch.from_numpy(tracking_results[:, 4].astype(int))  # The 5th column is the object ID
@@ -125,7 +132,7 @@ def tracking_deepsort(predictions, config, video_name):
     # After all frames have been processed, add the remaining frames in the buffer to all_tracking_results
     for _, tracked_prediction in buffer:
         all_tracking_results.append(tracked_prediction)
-
+    
     return all_tracking_results
   
 

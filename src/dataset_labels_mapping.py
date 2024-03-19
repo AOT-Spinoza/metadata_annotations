@@ -11,7 +11,9 @@ def classes_mapping(parameters_classes, config):
     elif 'dataset' in parameters_classes:
         dataset_trained_on = parameters_classes['dataset']
         classes_file_path = config.class_paths[dataset_trained_on]
+    
         if dataset_trained_on == "kinetics400":
+            ##Action classfication
             with open(classes_file_path, 'r') as f:
                 kinetics_classnames = json.load(f)
     
@@ -22,7 +24,8 @@ def classes_mapping(parameters_classes, config):
     
             return kinetics_id_to_classname
         elif dataset_trained_on == "ava":
-            print("into ava")
+
+            ##Action Detection
             label_map, _ = AvaLabeledVideoFramePaths.read_label_map(classes_file_path)
             return label_map
     else:

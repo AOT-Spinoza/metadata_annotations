@@ -71,13 +71,20 @@ def infer_videos_torchhub(video_files, model, transformation, clip_duration, cla
                 "pred_class": pred_class_names,
                 "pred_value": pred_values.tolist()
             }
+            del inputs
+            del preds
+
+            # Free up unused memory
+            torch.cuda.empty_cache()
+
+            # Force garbage collector to release unreferenced memory
+            gc.collect()
 
     elif model_name == "MiDaS":
         batch_size = 5  # Set your desired batch size
         for video in tqdm(video_files, desc=f"Processing videos for {model_name}"):
             video_reader = torchvision.io.VideoReader(video, "video")
             video_frames, _, pts, meta = custom_read_video(video_reader)
-            print(video_frames[0].shape)
             del video_reader
             gc.collect()
             # Load the desired clip
@@ -98,6 +105,10 @@ def infer_videos_torchhub(video_files, model, transformation, clip_duration, cla
                     prediction = prediction.view(prediction.shape[0], 1, prediction.shape[1], -1)
 
                     outputs_all[os.path.basename(video)].extend(prediction)
+                    del input_batch
+                    del prediction
+                    torch.cuda.empty_cache()
+                    gc.collect()
 
 
     # elif model_name == "MiDaS":
