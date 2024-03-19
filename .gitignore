@@ -159,3 +159,22 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 result/
 OLDER_FORMAT_OF_SCRIPTS/
+sparse_matrices/
+scripts/activation_depth_caption.ipynb
+scripts/average_background_dist.json
+scripts/class_copmare_combo.json
+scripts/class_copmare.json
+scripts/model_agreements.csv
+scripts/video_info.py
+scripts/qualitative_analysis.ipynb
+scripts/segmentation_class_dist.json
+scripts/sompare.resutl.py
+scripts/stat_analysis_cca2.ipynb
+scripts/stat_analysis_keypoints.ipynb
+scripts/statistical_analysis_cca.ipynb
+scripts/stats.comparing.py
+scripts/tsne_cca.ipynb
+scripts/stat_analysis_cca2.ipynb
+scripts/stat_analysis_keypoints.ipynb
+scripts/statistical_analysis_cca.ipynb
+scripts/stat_analysis_cca2.ipynb
