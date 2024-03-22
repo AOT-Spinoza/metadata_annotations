@@ -39,8 +39,6 @@ def load_and_configure_model(model_config, config):
         tuple: A tuple containing the loaded model, transformation function,
                dictionary mapping kinetics IDs to class names, and clip duration.
     """
-    # Extract model configuration parameters
-    framework = model_config.framework
 
     load_function = import_from(model_config.model_loading_function)
 

@@ -151,6 +151,24 @@ def save_segmentation_as_hdf5(segmentation, filename):
             f.create_dataset(f'frame_{i}', data=frame_argmax, compression="gzip", compression_opts=9)
         print(f'HDF5 exported to {filename}')
 
+def save_motion_energy_as_hdf5(moten_features, filename):
+    """
+    Save the semantic segmentation output as an HDF5 file.
+    This version applies argmax to each frame before saving, reducing the data size.
+
+    Args:
+        segmentation (list): A list of tensors representing the segmentation maps for each frame.
+        filename (str): The name of the HDF5 file to save.
+    """
+
+    with h5py.File(filename, 'w') as f:
+        for i, frame in enumerate(moten_features):
+            # Apply argmax to the frame to get the class with the highest probability for each pixel
+            frame_argmax = torch.argmax(frame, dim=0).numpy()
+            # Save the frame to the HDF5 file
+            f.create_dataset(f'frame_{i}', data=frame_argmax, compression="gzip", compression_opts=9)
+        print(f'HDF5 exported to {filename}')
+
 def keypoints_to_csv(data, output_filename):
     # Define the keypoints classes
     coco_keypoints = [
@@ -332,3 +350,7 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                         else:
                             with open(os.path.join(task_dir, f"{video_name}_{model_name}.txt"), 'w') as f:
                                 f.write("No action detected in video")
+            else:    
+                if data != None:
+                    if export_settings.get('hdf5', False):
+                        save_motion_energy_as_hdf5(data, os.path.join(task_dir, f"{video_name}_{model_name}.hdf5"))
