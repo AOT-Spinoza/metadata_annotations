@@ -181,6 +181,4 @@ def huggingface_transform(processor_function, pretrained_model_name_or_path):
     return processor, clip_duration
 
 def skip_transformation(**kwargs):
-    # def skip():
-    #     return None
     return None, None
