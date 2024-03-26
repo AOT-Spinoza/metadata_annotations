@@ -19,7 +19,7 @@ tasks:
         framework: pymoten
         model_loading_function: 'moten.get_default_pyramid'
         parameters_load_function:
-          fps: 60
+          fps: 24
           vhsize:
             - 720
             - 1080
