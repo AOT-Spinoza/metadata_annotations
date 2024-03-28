@@ -18,7 +18,6 @@ from torchvision.transforms import CenterCrop, Compose, Lambda, Normalize, v2 as
 from torchvision.transforms._functional_video import normalize
 from torchvision.transforms._transforms_video import CenterCropVideo, NormalizeVideo
 from transformers import AutoModelForCausalLM, AutoProcessor
-
 from pytorchvideo.transforms import ApplyTransformToKey, ShortSideScale, UniformTemporalSubsample
 from pytorchvideo.transforms.functional import clip_boxes_to_image, short_side_scale_with_boxes, uniform_temporal_subsample
 
@@ -179,3 +178,6 @@ def huggingface_transform(processor_function, pretrained_model_name_or_path):
     clip_duration = None
 
     return processor, clip_duration
+
+def skip_transformation(**kwargs):
+    return None, None

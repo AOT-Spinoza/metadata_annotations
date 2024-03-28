@@ -11,16 +11,16 @@ import gc
 import torch
 from tqdm import tqdm
 from  src.predictions import get_dirs_with_subdir, get_video_dirs_without_subdir, get_unused_video_files, check_missing_counterparts
-config = hydra_zen.load_from_yaml("/tank/tgn252/metadata_annotations/config.yaml")
+config = hydra_zen.load_from_yaml("config.yaml")
 
 
 def input_function(config,input_dir):
 
     video_files = [os.path.join(input_dir, f) for f in os.listdir(input_dir) if f.endswith('.mp4')]  # adjust the condition based on your video file format
     
-    # FILTERING OPTIONS now you have to comment out which you want to do but will become ppart of confg later on, also you can give the number of videos you want to process
+    # FILTERING OPTIONS now you have to comment out which you want to do but will become part of confg later on, also you can give the number of videos you want to process
     # OPTION 1 Filter the selected video files from INPUT to include only those that are not already names of directories under the OUTPUT directory, so that we don't process the same video twice
-    video_files = get_unused_video_files(video_files, "/tank/shared/2024/visual/AOT/derivatives/stimuli/annotations",100)
+    # video_files = get_unused_video_files(video_files, "/tank/shared/2024/visual/AOT/derivatives/stimuli/annotations",100)
     # # OPTION 2 Check for each video in OUTPUT dir if its reversed time counterpart exists and use the one that is missing
     # # Get a list of all video directories in the output directory
     #  output_dir = config['outputs']
@@ -69,7 +69,4 @@ def my_pipeline(config):
         print('out of determine_and_execute_export_function')
     # execute_all_statistical_analysis(postprocessed, config)
     
-    
-
 my_pipeline(config)
-

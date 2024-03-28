@@ -2,6 +2,7 @@ from scripts import torch_inference
 from scripts import torchhub_inference
 from scripts import pytorchvideo_inference
 from scripts import huggingface_inference
+from scripts import pymoten_inference
 import os
 import random
 
@@ -169,4 +170,7 @@ def inference(config, models, transformations, clip_durations, classes, input_di
                     output_dict[task_type][model_name] = pytorchvideo_inference.infer_videos(config, video_files, model, transformations[task_type][model_name], clip_durations[task_type][model_name], classes[task_type][model_name], model_name)
             elif framework == 'huggingface':
                 output_dict[task_type][model_name] = huggingface_inference.infer_videos_huggingface(video_files, model, transformations[task_type][model_name], model_name)
+            elif framework == 'pymoten':
+                output_dict[task_type][model_name] = pymoten_inference.infer_videos(video_files, model, config, task_type, model_name)
+    
     return output_dict

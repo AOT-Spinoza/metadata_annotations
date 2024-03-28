@@ -13,6 +13,21 @@ tasks:
           pretrained_model_name_or_path: "microsoft/git-base-vatex" 
       export:
         csv: yes
+  motion_energy:
+    pymoten:
+      load_model:
+        framework: pymoten
+        model_loading_function: 'moten.get_default_pyramid'
+        parameters_load_function:
+          fps: 24
+          vhsize:
+            - 720
+            - 1080
+        transformation_function: src.transformations.skip_transformation
+        parameters_transformation:
+          nimages: 60
+      export:
+        hdf5: yes
   object_detection:
     fasterrcnn_resnet50_fpn_v2:
       framework: torch
@@ -38,30 +53,30 @@ tasks:
       export:
         video: yes
         hdf5: yes
-  # semantic_segmentation:
-  #   FCN_ResNet101:
-  #     load_model:
-  #       framework: torch
-  #       model_loading_function: torchvision.models.segmentation.fcn_resnet101
-  #       parameters_load_function:
-  #         weights: FCN_ResNet101_Weights.DEFAULT
-  #       transformation_function: 'src.transformations.torch_transform'
-  #       parameters_transformation:
-  #         weights: FCN_ResNet101_Weights.DEFAULT
-  #       classes_function: 'src.dataset_labels_mapping.classes_mapping'
-  #       parameters_classes:
-  #         weights: FCN_ResNet101_Weights.DEFAULT
-  #     preprocessing:
-  #       unsqueeze: yes
-  #       to_tensor: false
-  #       to_list: false
-  #     postprocessing:
-  #       - src.postprocessing.soft_max
-  #     export:
-  #       video: yes
-  #       resize: 520
-  #       csv: no
-  #       hdf5: yes
+  semantic_segmentation:
+    FCN_ResNet101:
+      load_model:
+        framework: torch
+        model_loading_function: torchvision.models.segmentation.fcn_resnet101
+        parameters_load_function:
+          weights: FCN_ResNet101_Weights.DEFAULT
+        transformation_function: 'src.transformations.torch_transform'
+        parameters_transformation:
+          weights: FCN_ResNet101_Weights.DEFAULT
+        classes_function: 'src.dataset_labels_mapping.classes_mapping'
+        parameters_classes:
+          weights: FCN_ResNet101_Weights.DEFAULT
+      preprocessing:
+        unsqueeze: yes
+        to_tensor: false
+        to_list: false
+      postprocessing:
+        - src.postprocessing.soft_max
+      export:
+        video: yes
+        resize: 520
+        csv: no
+        hdf5: yes
   keypoints:
     KeypointRCNN_ResNet50:
       load_model:
@@ -176,14 +191,9 @@ tasks:
         video: yes
         hdf5: yes
 
-# inputs: /tank/tgn252/test_vid
-# inputs: /tank/tgn252/vid_folder
-# inputs: /tank/shared/2022/arrow_of_time/arrow_of_time_exp/videos1
 inputs: /tank/shared/2024/visual/AOT/derivatives/stimuli/rescaled_final
-outputs: /tank/tgn252/results/AOT_2024
-# outputs: /tank/shared/2024/visual/AOT/derivatives/stimuli/annotations
-# outputs: /tank/tgn252/metadata_annotations/result
-class_paths:
- kinetics400: /tank/tgn252/metadata_annotations/library/kinetics_classnames.json
- ava: /tank/tgn252/metadata_annotations/library/ava_action_list.pbtxt  
+outputs: null # paste path to own directory (e.g., /tank/<user_id>/projects/metadata_annotations/results) 
 
+class_paths:
+ kinetics400: /tank/rsr341/projects/metadata_annotations/library/kinetics_classnames.json
+ ava: /tank/rsr341/metadata_annotations/library/ava_action_list.pbtxt  
