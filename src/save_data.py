@@ -163,10 +163,8 @@ def save_motion_energy_as_hdf5(moten_features, filename):
 
     with h5py.File(filename, 'w') as f:
         for i, frame in enumerate(moten_features):
-            # Apply argmax to the frame to get the class with the highest probability for each pixel
-            frame_argmax = torch.argmax(frame, dim=0).numpy()
             # Save the frame to the HDF5 file
-            f.create_dataset(f'frame_{i}', data=frame_argmax, compression="gzip", compression_opts=9)
+            f.create_dataset(f'frame_{i}', data=frame, compression="gzip", compression_opts=9)
         print(f'HDF5 exported to {filename}')
 
 def keypoints_to_csv(data, output_filename):
@@ -220,7 +218,7 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
         for model_name, model_data in task_data.items():
             if classes_dict[task_type][model_name] != None:
                 classes = classes_dict[task_type][model_name]
-            if config['tasks'][task_type][model_name]["load_model"]['framework'] == "torchhub" or "hugginface":
+            if config['tasks'][task_type][model_name]["load_model"]['framework'] in ("torchhub", "huggingface"):
                 export_settings = config['tasks'][task_type][model_name]['export']
                 resize_value =  export_settings.get('resize', None)
                 print(export_settings)
@@ -269,7 +267,7 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                             visualizer.create_videos_from_frames(data, os.path.join(task_dir, f"{video_name}_{model_name}.mp4"), task_type, video_name, config, resize_value)
                             print(f'Video exported to {task_dir}/{video_name}_{model_name}.mp4')
 
-            if config['tasks'][task_type][model_name]["load_model"]['framework'] == "torch" or "pytorchvideo":
+            if config['tasks'][task_type][model_name]["load_model"]['framework'] in ("torch", "pytorchvideo"):
                 
                 for video_name, data in model_data.items():
                     
@@ -350,7 +348,12 @@ def determine_and_execute_export_function(data_dict,classes_dict, config):
                         else:
                             with open(os.path.join(task_dir, f"{video_name}_{model_name}.txt"), 'w') as f:
                                 f.write("No action detected in video")
-            else:    
-                if data != None:
+            if config['tasks'][task_type][model_name]["load_model"]['framework'] == 'pymoten':
+                export_settings = config['tasks'][task_type][model_name]['export']
+                for video_name, data in model_data.items():
+                    output_path = config['outputs']
+                    task_dir = os.path.join(output_path, video_name, task_type, model_name)
+                    os.makedirs(task_dir, exist_ok=True)
+                    video_name = os.path.splitext(video_name)[0]
                     if export_settings.get('hdf5', False):
                         save_motion_energy_as_hdf5(data, os.path.join(task_dir, f"{video_name}_{model_name}.hdf5"))
