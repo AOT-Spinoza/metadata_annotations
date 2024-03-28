@@ -153,11 +153,10 @@ def save_segmentation_as_hdf5(segmentation, filename):
 
 def save_motion_energy_as_hdf5(moten_features, filename):
     """
-    Save the semantic segmentation output as an HDF5 file.
-    This version applies argmax to each frame before saving, reducing the data size.
-
+    Save the motion energy features as an HDF5 file.
+    
     Args:
-        segmentation (list): A list of tensors representing the segmentation maps for each frame.
+        moten_features (list): A list of tensors representing the motion energy features for each frame.
         filename (str): The name of the HDF5 file to save.
     """
 
