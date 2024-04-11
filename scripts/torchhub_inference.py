@@ -9,6 +9,8 @@ import collections
 import gc
 import matplotlib.pyplot as plt
 import cv2
+import traceback
+
 
 def infer_videos_torchhub(video_files, model, transformation, clip_duration, classes, model_name):
     """
@@ -41,7 +43,7 @@ def infer_videos_torchhub(video_files, model, transformation, clip_duration, cla
         start_sec = 0
         end_sec = start_sec + clip_duration
     except:
-        print('clip_duration not found')
+        pass
     if model_name == "X3D":
         for video_path in tqdm(video_files, desc=f"Processing videos for {model_name}"):
             # Initialize an EncodedVideo helper class and load the video
@@ -81,7 +83,6 @@ def infer_videos_torchhub(video_files, model, transformation, clip_duration, cla
             gc.collect()
 
     elif model_name == "MiDaS":
-        batch_size = 5  # Set your desired batch size
         for video in tqdm(video_files, desc=f"Processing videos for {model_name}"):
             video_reader = torchvision.io.VideoReader(video, "video")
             video_frames, _, pts, meta = custom_read_video(video_reader)
@@ -89,27 +90,21 @@ def infer_videos_torchhub(video_files, model, transformation, clip_duration, cla
             gc.collect()
             # Load the desired clip
             outputs_all[os.path.basename(video)] = []
-            for i in range(0, len(video_frames), batch_size):
-                batch_frames = video_frames[i:i+batch_size]
-                original_size = batch_frames[0].shape[-2:]
+            for frame in tqdm(video_frames):
+                original_size = frame.shape[-2:]
                 # Convert the tensor to a numpy array and move it to CPU
-                batch_frames = [frame.permute(1, 2, 0).cpu().numpy() for frame in batch_frames]
-                input_batch = torch.stack([transformation(frame) for frame in batch_frames]).to(device)
-                # Flatten the batch dimension
-                input_batch = input_batch.view(-1, *input_batch.shape[2:])
+                frame = frame.permute(1, 2, 0).cpu().numpy()
+                
+                input_frame = transformation(frame).unsqueeze(0).to(device)
+                input_frame = input_frame.squeeze(1)  # Remove the extra dimension
                 with torch.no_grad():
-                    prediction = model(input_batch).cpu()
- 
-                    #
-                    # prediction = prediction.view(prediction.shape[0], -1, *prediction.shape[2:])
+                    prediction = model(input_frame).cpu()
                     prediction = prediction.view(prediction.shape[0], 1, prediction.shape[1], -1)
-
                     outputs_all[os.path.basename(video)].extend(prediction)
-                    del input_batch
+                    del input_frame
                     del prediction
                     torch.cuda.empty_cache()
                     gc.collect()
-
 
     # elif model_name == "MiDaS":
     #     for video in tqdm(video_files, desc=f"Processing videos for {model_name}"):

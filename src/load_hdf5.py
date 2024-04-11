@@ -102,3 +102,31 @@ def load_objects_from_hdf5(filename):
             data.append(frame)
     return data
 
+import h5py
+import numpy as np
+
+def load_objects_from_hdf5_2(filename):
+    """
+    Load the object detection output from an HDF5 file.
+
+    Args:
+        filename (str): The name of the HDF5 file to load.
+
+    Returns:
+        data (list): A list of dictionaries representing the detection maps for each frame.
+    """
+
+    data = []
+
+    with h5py.File(filename, 'r') as f:
+        for i in range(len(f.keys())):
+            grp = f[str(i)]
+            frame_data = {}
+            for key in grp.keys():
+                if key == "empty":
+                    frame_data = None
+                else:
+                    frame_data[key] = np.array(grp[key])
+            data.append(frame_data)
+
+    return data
