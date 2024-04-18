@@ -92,7 +92,7 @@ def infer_videos_huggingface(video_files, model, transformations, model_name):
             pixel_values = pixel_values.to('cuda')
 
             # Generate predictions using the model
-            generated_data = model.generate(pixel_values=pixel_values, max_length=100, output_attentions=True, output_hidden_states=True, return_dict_in_generate=True)
+            generated_data = model.generate(pixel_values=pixel_values, max_length=100, output_attentions=False, output_hidden_states=False, return_dict_in_generate=True)
             # Decode the generated IDs to get the output text
             output = transformations.batch_decode(generated_data['sequences'], skip_special_tokens=True)
 
