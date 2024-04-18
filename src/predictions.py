@@ -68,20 +68,26 @@ def check_missing_counterparts(video_files, output_dir, n):
     return missing_counterparts_paths
 
 def get_unused_video_files(video_files, output_dir, number_video):
-        """
-        Filters the video files to include only those that are not already names of directories under the output directory.
+    """
+    Filters the video files to include only those that are not already names of directories under the output directory.
 
-        Args:
-            video_files (list): List of video file paths.
-            output_dir (str): Path to the output directory.
+    Args:
+        video_files (list): List of video file paths.
+        output_dir (str): Path to the output directory.
 
-        Returns:
-            list: List of video file paths that are not already names of directories under the output directory.
-        """
-        selected_video_files = random.sample(video_files, number_video)
-        existing_dirs = [d for d in os.listdir(output_dir) if os.path.isdir(os.path.join(output_dir, d))]
-        unused_video_files = [f for f in selected_video_files if os.path.basename(f) not in existing_dirs]
-        return unused_video_files
+    Returns:
+        list: List of video file paths that are not already names of directories under the output directory.
+    """
+    video_files.sort()
+    selected_video_files = video_files
+    existing_dirs = [d for d in os.listdir(output_dir) if os.path.isdir(os.path.join(output_dir, d))]
+    unused_video_files = [f for f in selected_video_files if os.path.basename(f) not in existing_dirs]
+    
+    if len(unused_video_files) < number_video:
+        print(f'Found {len(unused_video_files)} unused video files, which is less than the requested {number_video} video files.')
+    else:
+        print(f'Found {len(unused_video_files)} unused video files. Returning list of {number_video} video files.')
+    return unused_video_files
 
 def get_video_dirs_without_subdir(video_dirs, subdir, number_video):
     """

@@ -22,7 +22,7 @@ def check_for_persons(predictions, config, video_name=None):
             frames_with_persons += 1
         else:
             frames_with_no_persons += 1
-    print(frames_with_persons)        
+
     if frames_with_persons >= lower_limit:
         # if frames_with_persons > frames_with_no_persons:
         #     print('manypersonsdetected')
@@ -62,7 +62,7 @@ def soft_max(predictions, config, video_name):
     Returns:
         list of Tensors: A list of tensors containing the predictions with applied softmax function.
     """
-    print('soft_max')
+
     return [torch.nn.functional.softmax(prediction.squeeze(), dim=0) for prediction in predictions]
 
 
@@ -119,7 +119,6 @@ def postprocess_predictions(predictions, config):
                         postprocessed[task_type][model_name][video_name] = postprocessing_function(postprocessed[task_type][model_name][video_name], threshold_value)
                     else:
                         # For other functions, pass the prediction and the config as arguments
-                        print(video_name)
                         postprocessed[task_type][model_name][video_name] = postprocessing_function(postprocessed[task_type][model_name][video_name], config, video_name)
 
     # Return the post-processed predictions

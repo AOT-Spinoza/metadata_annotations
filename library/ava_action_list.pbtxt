@@ -3,6 +3,10 @@ item {
   id: 1
 }
 item {
+  name: "crawl"
+  id: 2
+}
+item {
   name: "crouch/kneel"
   id: 3
 }

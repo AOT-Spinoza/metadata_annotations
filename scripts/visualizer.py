@@ -16,7 +16,7 @@ from matplotlib import colors as mcolors
 import torchvision.transforms.functional as F
 import torch.nn.functional as FF
 from PIL import ImageColor
-
+from torchvision.ops import box_convert
 plt.rcParams["savefig.bbox"] = 'tight'
 
 
@@ -364,6 +364,8 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
                     frame = torchvision.utils.draw_keypoints(frame, keypoints_xy, colors=color)
             overdrawn_frames.append(frame)
         write_video_directly(out_video_name, overdrawn_frames, fps)
+
+
     if task_type == 'object_detection':
         video_frames, fps = get_video_data(video_name, config, resize_value)
         overdrawn_frames = []
@@ -371,11 +373,30 @@ def create_videos_from_frames(data, out_video_name, task_type,video_name, config
 
             # Get the bounding boxes and labels from the prediction
             boxes = prediction['boxes']
+            print(boxes)
             labels = [classes[i] for i in prediction['labels']]  
+
+            # Ensure boxes are float32 and on the same device as the frame
+            boxes = boxes.to(frame.device).float()
+
+            # Check that xmin < xmax and ymin < ymax for all boxes
+            # Skip if boxes is empty
+            if boxes.nelement() != 0:
+                # Ensure boxes is a 2D tensor
+                if boxes.dim() == 1:
+                    boxes = boxes.unsqueeze(0)
+
+                # Create a mask for boxes that meet the condition
+                mask = (boxes[:, 0] < boxes[:, 2]) & (boxes[:, 1] < boxes[:, 3])
+
+                # Apply the mask to boxes and labels
+                boxes = boxes[mask]
+                labels = [label for box, label in zip(mask, labels) if box]
+
             # Draw the bounding boxes on the frame
             if len(boxes) > 0:
                 boxes = torch.where(boxes < 0, torch.zeros_like(boxes), boxes)
-                frame = torchvision.utils.draw_bounding_boxes(frame, boxes, labels, font="/tank/tgn252/metadata_annotations/library/GothamMedium.ttf", font_size=20, width=4)          
+                frame = torchvision.utils.draw_bounding_boxes(frame, boxes, labels, font="/tank/tgn252/metadata_annotations/library/GothamMedium.ttf", font_size=20, width=4)         
             overdrawn_frames.append(frame)
         write_video_directly(out_video_name, overdrawn_frames, fps)
 
